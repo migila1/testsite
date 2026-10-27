@@ -47,7 +47,8 @@ export default function Rules() {
           <Button type="submit">Regel opslaan</Button>
         </form>
         <p className="mt-2 text-xs text-slate-500">
-          Woorden worden gezocht in omschrijving, tegenrekening én mededelingen. Handmatige categorieën worden nooit
+          De regeltekst moet als geheel (of alle woorden samen) voorkomen in omschrijving, mededelingen of
+          tegenrekening (naam of IBAN) — per veld, niet verspreid over velden. Handmatige categorieën worden nooit
           overschreven. Bij categoriseren op Transacties worden regels automatisch aangemaakt of uitgebreid.
         </p>
       </Card>

@@ -340,8 +340,8 @@ export default function Transactions() {
                 </label>
               )}
               <p className="text-xs text-slate-600">
-                Kopieer tekst uit mededelingen in het detail scherm. Regels zoeken in omschrijving, tegenrekening en
-                mededelingen.
+                Kopieer tekst uit mededelingen in het detail scherm. Regels matchen als de tekst (of alle woorden) in
+                één veld voorkomt: omschrijving, mededelingen of tegenrekening.
               </p>
             </div>
 

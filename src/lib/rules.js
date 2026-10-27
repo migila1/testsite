@@ -1,4 +1,54 @@
-import { transactionMatchText } from './transactionText.js'
+import { normalizePattern, patternWords } from './learnRule.js'
+import { transactionRuleFields } from './transactionText.js'
+
+function normalizeFieldText(text) {
+  return String(text ?? '')
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function fieldContainsPhrase(field, pattern) {
+  const hay = normalizeFieldText(field)
+  const needle = normalizePattern(pattern)
+  if (!needle) return false
+  return hay.includes(needle)
+}
+
+function fieldContainsAllWords(field, pattern) {
+  const hay = normalizeFieldText(field)
+  const words = patternWords(pattern)
+  if (words.length === 0) return false
+  return words.every((w) => hay.includes(w))
+}
+
+function safeRegex(pattern) {
+  try {
+    return new RegExp(pattern, 'i')
+  } catch {
+    return /(?!)/ 
+  }
+}
+
+/** @returns {boolean} */
+export function ruleMatchesTransaction(rule, tx) {
+  if (!rule?.active) return false
+  const pattern = rule.pattern ?? ''
+  if (!String(pattern).trim()) return false
+
+  const fields = transactionRuleFields(tx)
+
+  if (rule.match_type === 'regex') {
+    const re = safeRegex(pattern)
+    return fields.some((field) => re.test(field))
+  }
+
+  if (rule.match_type === 'all_words') {
+    return fields.some((field) => fieldContainsAllWords(field, pattern))
+  }
+
+  return fields.some((field) => fieldContainsPhrase(field, pattern))
+}
 
 /**
  * Past regels toe op transacties. Handmatige categorieën blijven intact.
@@ -11,21 +61,8 @@ export function applyRules(transactions, rules) {
     if (tx.category_source === 'manual' && tx.category_id) {
       return tx
     }
-    const hay = transactionMatchText(tx)
     for (const rule of sorted) {
-      if (!rule.active) continue
-      const needle = (rule.pattern ?? '').toLowerCase()
-      if (!needle) continue
-      let match = false
-      if (rule.match_type === 'regex') {
-        match = safeRegex(rule.pattern).test(hay)
-      } else if (rule.match_type === 'all_words') {
-        const words = needle.split(/\s+/).filter(Boolean)
-        match = words.length > 0 && words.every((w) => hay.includes(w))
-      } else {
-        match = hay.includes(needle)
-      }
-      if (match) {
+      if (ruleMatchesTransaction(rule, tx)) {
         return {
           ...tx,
           category_id: rule.category_id,
@@ -36,12 +73,4 @@ export function applyRules(transactions, rules) {
     }
     return tx
   })
-}
-
-function safeRegex(pattern) {
-  try {
-    return new RegExp(pattern, 'i')
-  } catch {
-    return /(?!)/ 
-  }
 }

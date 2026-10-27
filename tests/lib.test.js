@@ -155,13 +155,71 @@ describe('rules', () => {
     expect(applyRules(txs, rules)[0].category_id).toBe('c1')
   })
 
-  it('matcht all_words als alle termen voorkomen', () => {
+  it('matcht all_words als alle termen in hetzelfde veld voorkomen', () => {
     const txs = [{ id: '1', description: 'SPOTIFY PREMIUM NL', category_id: null, category_source: null }]
     const rules = [
       { id: 'r1', pattern: 'spotify premium', match_type: 'all_words', category_id: 'c1', active: true, priority: 1 },
     ]
     const out = applyRules(txs, rules)
     expect(out[0].category_id).toBe('c1')
+  })
+
+  it('matcht contains alleen als volledige tekst in één veld staat', () => {
+    const txs = [
+      {
+        id: '1',
+        description: 'foo',
+        memo: 'bar',
+        counterparty_name: '',
+        category_id: null,
+        category_source: null,
+      },
+    ]
+    const rules = [
+      { id: 'r1', pattern: 'foo bar', match_type: 'contains', category_id: 'c1', active: true, priority: 1 },
+    ]
+    expect(applyRules(txs, rules)[0].category_id).toBeNull()
+  })
+
+  it('matcht contains op tegenrekening (IBAN)', () => {
+    const txs = [
+      {
+        id: '1',
+        description: 'Overboeking',
+        memo: '',
+        counterparty_name: '',
+        counterparty_iban: 'NL91ABNA0417164300',
+        category_id: null,
+        category_source: null,
+      },
+    ]
+    const rules = [
+      {
+        id: 'r1',
+        pattern: 'nl91abna0417164300',
+        match_type: 'contains',
+        category_id: 'c1',
+        active: true,
+        priority: 1,
+      },
+    ]
+    expect(applyRules(txs, rules)[0].category_id).toBe('c1')
+  })
+
+  it('matcht all_words niet als woorden over velden verdeeld zijn', () => {
+    const txs = [
+      {
+        id: '1',
+        description: 'spotify',
+        memo: 'premium abo',
+        category_id: null,
+        category_source: null,
+      },
+    ]
+    const rules = [
+      { id: 'r1', pattern: 'spotify premium', match_type: 'all_words', category_id: 'c1', active: true, priority: 1 },
+    ]
+    expect(applyRules(txs, rules)[0].category_id).toBeNull()
   })
 
   it('overschrijft handmatige categorie niet', () => {
