@@ -1,34 +1,63 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Button from '../components/ui/Button.jsx'
 import Card from '../components/ui/Card.jsx'
 import { parseIngCsv } from '../lib/import/ingParser.js'
 import { useStore } from '../store.jsx'
 
+function queueId() {
+  return crypto.randomUUID()
+}
+
 export default function Import() {
   const { accounts, importRows } = useStore()
   const [accountId, setAccountId] = useState(accounts[0]?.id ?? '')
-  const [preview, setPreview] = useState([])
-  const [errors, setErrors] = useState([])
-  const [allRows, setAllRows] = useState([])
-  const [result, setResult] = useState(null)
+  const [queue, setQueue] = useState([])
   const [busy, setBusy] = useState(false)
+  const [lastResult, setLastResult] = useState(null)
 
-  const onFile = async (file) => {
-    const text = await file.text()
-    const { rows, errors: parseErrors } = parseIngCsv(text)
-    setAllRows(rows)
-    setPreview(rows.slice(0, 20))
-    setErrors(parseErrors)
-    setResult(null)
+  useEffect(() => {
+    if (!accountId && accounts[0]?.id) setAccountId(accounts[0].id)
+  }, [accounts, accountId])
+
+  const onFiles = async (fileList) => {
+    const files = [...fileList]
+    const added = []
+    for (const file of files) {
+      const text = await file.text()
+      const { rows, errors } = parseIngCsv(text)
+      added.push({
+        id: queueId(),
+        accountId: accountId || accounts[0]?.id,
+        fileName: file.name,
+        rows,
+        errors,
+      })
+    }
+    setQueue((q) => [...q, ...added])
+    setLastResult(null)
   }
 
-  const doImport = async () => {
-    if (!accountId || !allRows.length) return
+  const updateQueueAccount = (id, nextAccountId) => {
+    setQueue((q) => q.map((item) => (item.id === id ? { ...item, accountId: nextAccountId } : item)))
+  }
+
+  const removeFromQueue = (id) => setQueue((q) => q.filter((item) => item.id !== id))
+
+  const runImport = async () => {
+    if (!queue.length) return
     setBusy(true)
+    setLastResult(null)
     try {
-      const r = await importRows(accountId, allRows)
-      setResult(r)
-      setPreview([])
+      let inserted = 0
+      let skipped = 0
+      for (const item of queue) {
+        if (!item.accountId || !item.rows.length) continue
+        const r = await importRows(item.accountId, item.rows)
+        inserted += r.inserted
+        skipped += r.skipped
+      }
+      setLastResult({ inserted, skipped, files: queue.length })
+      setQueue([])
     } finally {
       setBusy(false)
     }
@@ -37,9 +66,18 @@ export default function Import() {
   return (
     <div className="space-y-4">
       <Card title="ING CSV importeren">
-        <p className="mb-3 text-sm text-slate-600">Exporteer vanuit ING (.csv, puntkomma). Data wordt niet offline gecached buiten demo-modus.</p>
+        <p className="mb-3 text-sm text-slate-600">
+          Upload per rekening een export (.csv, puntkomma). Je kunt meerdere bestanden in de wachtrij zetten (bijv. twee
+          ING-rekeningen). Duplicaten op dezelfde rekening worden overgeslagen via fingerprint.
+        </p>
+        {accounts.length < 2 && (
+          <p className="mb-3 text-sm text-amber-800">
+            Tip: voeg onder Rekeningen een tweede rekening toe met IBAN — overboekingen tussen eigen rekeningen worden
+            dan herkend en niet meegeteld in totalen.
+          </p>
+        )}
         <label className="mb-3 block text-sm">
-          Rekening
+          Standaard rekening voor nieuwe bestanden
           <select
             className="mt-1 min-h-11 w-full rounded-xl border border-slate-200 px-3"
             value={accountId}
@@ -47,7 +85,7 @@ export default function Import() {
           >
             {accounts.map((a) => (
               <option key={a.id} value={a.id}>
-                {a.name}
+                {a.name} {a.iban ? `(${a.iban})` : ''}
               </option>
             ))}
           </select>
@@ -55,30 +93,52 @@ export default function Import() {
         <input
           type="file"
           accept=".csv,text/csv"
+          multiple
           className="min-h-11 w-full text-sm"
-          onChange={(e) => e.target.files?.[0] && onFile(e.target.files[0])}
+          onChange={(e) => e.target.files?.length && onFiles(e.target.files)}
         />
-        {errors.length > 0 && (
-          <p className="mt-2 text-sm text-amber-700">{errors.length} parse-waarschuwing(en)</p>
-        )}
-        {preview.length > 0 && (
-          <>
-            <p className="mt-3 text-sm">Voorbeeld ({preview.length} van {allRows.length})</p>
-            <ul className="mt-2 max-h-48 overflow-auto text-xs text-slate-700">
-              {preview.map((r) => (
-                <li key={r.id} className="border-b border-slate-100 py-1">
-                  {r.booking_date} — {r.description}
+
+        {queue.length > 0 && (
+          <div className="mt-4 space-y-3">
+            <p className="text-sm font-medium">Wachtrij ({queue.length})</p>
+            <ul className="space-y-2 text-sm">
+              {queue.map((item) => (
+                <li key={item.id} className="rounded-xl border border-slate-200 p-3">
+                  <p className="font-medium">{item.fileName}</p>
+                  <p className="text-xs text-slate-500">{item.rows.length} regels</p>
+                  {item.errors?.length > 0 && (
+                    <p className="text-xs text-amber-700">{item.errors.length} parse-waarschuwing(en)</p>
+                  )}
+                  <label className="mt-2 block text-xs">
+                    Rekening
+                    <select
+                      className="mt-1 min-h-11 w-full rounded-xl border border-slate-200 px-3"
+                      value={item.accountId}
+                      onChange={(e) => updateQueueAccount(item.id, e.target.value)}
+                    >
+                      {accounts.map((a) => (
+                        <option key={a.id} value={a.id}>
+                          {a.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <Button variant="ghost" className="mt-2" onClick={() => removeFromQueue(item.id)}>
+                    Verwijderen
+                  </Button>
                 </li>
               ))}
             </ul>
-            <Button className="mt-3" onClick={doImport} disabled={busy}>
-              {busy ? 'Bezig…' : 'Importeren'}
+            <Button onClick={runImport} disabled={busy}>
+              {busy ? 'Bezig…' : `Importeer ${queue.length} bestand(en)`}
             </Button>
-          </>
+          </div>
         )}
-        {result && (
+
+        {lastResult && (
           <p className="mt-3 text-sm text-emerald-800">
-            Toegevoegd: {result.inserted}, overgeslagen (duplicaat): {result.skipped}
+            {lastResult.files} bestand(en): {lastResult.inserted} toegevoegd, {lastResult.skipped} duplicaat overgeslagen.
+            Interne overboekingen tussen je rekeningen zijn gemarkeerd.
           </p>
         )}
       </Card>

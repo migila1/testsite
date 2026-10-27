@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { computeFingerprint, fingerprintBaseKey } from '../src/lib/fingerprint.js'
 import { formatCents, parseEuroToCents } from '../src/lib/money.js'
+import { applyInternalTransferDetection, normalizeIban } from '../src/lib/internalTransfer.js'
 import { buildLearnedRuleUpsert, mergePatternWords } from '../src/lib/learnRule.js'
 import { applyRules } from '../src/lib/rules.js'
 import { filterForReports, sumByCategory } from '../src/lib/stats.js'
@@ -29,6 +30,31 @@ describe('fingerprint', () => {
     const f1 = await computeFingerprint(tx, 1)
     expect(f0).not.toBe(f1)
     expect(fingerprintBaseKey(tx)).toContain('a1')
+  })
+})
+
+describe('internalTransfer', () => {
+  it('normaliseert iban', () => {
+    expect(normalizeIban('nl12 ingb 123')).toBe('NL12INGB123')
+  })
+
+  it('markeert overboeking naar eigen iban', () => {
+    const accounts = [
+      { id: 'a1', iban: 'NL11INGB1111111111' },
+      { id: 'a2', iban: 'NL22INGB2222222222' },
+    ]
+    const txs = [
+      {
+        id: '1',
+        account_id: 'a1',
+        counterparty_iban: 'NL22 INGB 2222 2222 22',
+        amount_cents: -10000,
+        booking_date: '2026-01-01',
+        is_internal_transfer: false,
+      },
+    ]
+    const out = applyInternalTransferDetection(txs, accounts)
+    expect(out[0].is_internal_transfer).toBe(true)
   })
 })
 

@@ -37,7 +37,8 @@ export default function Transactions() {
   const filtered = useMemo(() => {
     return transactions.filter((t) => {
       if (search && !`${t.description}`.toLowerCase().includes(search.toLowerCase())) return false
-      if (categoryId && t.category_id !== categoryId) return false
+      if (categoryId === '__geen__' && t.category_id) return false
+      if (categoryId && categoryId !== '__geen__' && t.category_id !== categoryId) return false
       if (month && !(t.booking_date ?? '').startsWith(month)) return false
       return true
     })

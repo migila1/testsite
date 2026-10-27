@@ -29,4 +29,4 @@ $env:PW_CHANNEL='msedge'; npx playwright test
 
 ## Supabase
 
-Voer `supabase/schema.sql` uit in je project. Alle tabellen hebben RLS op `user_id = auth.uid()`.
+Voer `supabase/schema.sql` uit in je project (nieuw project). Bestaand project: draai extra scripts in **SQL Editor**, bv. `supabase/migration_category_adjustments.sql` voor eenmalige categorie-bedragen op het dashboard. Alle tabellen hebben RLS op `user_id = auth.uid()`.

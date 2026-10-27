@@ -14,6 +14,7 @@ export default function FilterBar({ search, onSearch, categoryId, onCategory, ca
         <span className="text-slate-600">Categorie</span>
         <select className="min-h-11 rounded-xl border border-slate-200 px-3" value={categoryId} onChange={(e) => onCategory(e.target.value)}>
           <option value="">Alle</option>
+          <option value="__geen__">Geen categorie</option>
           {categories.map((c) => (
             <option key={c.id} value={c.id}>
               {c.name}

@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { useAuth } from './auth.jsx'
 import { createDb } from './lib/db/index.js'
+import { applyInternalTransferDetection } from './lib/internalTransfer.js'
 import { buildLearnedRuleUpsert, normalizePattern, suggestPatternFromTransaction } from './lib/learnRule.js'
 import { applyRules } from './lib/rules.js'
 import { computeFingerprint, fingerprintBaseKey } from './lib/fingerprint.js'
@@ -86,6 +87,7 @@ export function StoreProvider({ children }) {
 
   const saveAccount = async (acc) => {
     await db.saveAccount(acc)
+    await syncInternalTransfers()
     await refresh()
   }
 
@@ -189,7 +191,25 @@ export function StoreProvider({ children }) {
     }
 
     const withRules = applyRules(prepared, rules)
-    return db.upsertTransactions(withRules)
+    const result = await db.upsertTransactions(withRules)
+    await syncInternalTransfers()
+    return result
+  }
+
+  const syncInternalTransfers = async () => {
+    const [allTx, accs] = await Promise.all([db.listTransactions(), db.listAccounts()])
+    if (accs.length < 2 && !accs.some((a) => a.iban)) return
+    const marked = applyInternalTransferDetection(allTx, accs)
+    const prevById = new Map(allTx.map((t) => [t.id, t]))
+    let any = false
+    for (const tx of marked) {
+      const prev = prevById.get(tx.id)
+      if (prev && prev.is_internal_transfer !== tx.is_internal_transfer) {
+        await db.updateTransaction(tx.id, { is_internal_transfer: tx.is_internal_transfer })
+        any = true
+      }
+    }
+    if (any) await refresh()
   }
 
   const reapplyRules = async () => {

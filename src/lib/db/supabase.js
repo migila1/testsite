@@ -14,6 +14,13 @@ function withUserId(row, userId) {
   return { ...row, user_id: userId }
 }
 
+const ADJUSTMENTS_MIGRATION_HINT =
+  'Voer supabase/migration_category_adjustments.sql uit in Supabase → SQL Editor (Dashboard eenmalige bedragen).'
+
+function isAdjustmentsTableMissing(error) {
+  return error?.code === 'PGRST205' && String(error?.message ?? '').includes('category_adjustments')
+}
+
 export function createSupabaseDb() {
   const client = getSupabaseClient()
 
@@ -118,7 +125,10 @@ export function createSupabaseDb() {
     },
     async listAdjustments() {
       const { data, error } = await client.from('category_adjustments').select('*').order('month', { ascending: false })
-      if (error) throw error
+      if (error) {
+        if (isAdjustmentsTableMissing(error)) return []
+        throw error
+      }
       return data ?? []
     },
     async saveAdjustment(adj) {
@@ -128,12 +138,18 @@ export function createSupabaseDb() {
         .upsert(withUserId(adj, userId))
         .select()
         .single()
-      if (error) throw error
+      if (error) {
+        if (isAdjustmentsTableMissing(error)) throw new Error(ADJUSTMENTS_MIGRATION_HINT)
+        throw error
+      }
       return data
     },
     async deleteAdjustment(id) {
       const { error } = await client.from('category_adjustments').delete().eq('id', id)
-      if (error) throw error
+      if (error) {
+        if (isAdjustmentsTableMissing(error)) throw new Error(ADJUSTMENTS_MIGRATION_HINT)
+        throw error
+      }
     },
   }
 }
