@@ -3,6 +3,7 @@ import { parseEuroToCents } from '../money.js'
 
 const COL = {
   date: ['Datum', 'datum'],
+  time: ['Tijd', 'tijd'],
   name: ['Naam / Omschrijving', 'Naam/Omschrijving', 'Naam / omschrijving'],
   account: ['Rekening', 'rekening'],
   counter: ['Tegenrekening', 'tegenrekening'],
@@ -25,6 +26,16 @@ function parseIngDate(raw) {
   if (m) return `${m[1]}-${m[2]}-${m[3]}`
   const dmy = s.match(/^(\d{2})-(\d{2})-(\d{4})$/)
   if (dmy) return `${dmy[3]}-${dmy[2]}-${dmy[1]}`
+  return s
+}
+
+function parseIngTime(raw) {
+  const s = String(raw ?? '').trim()
+  if (!s) return ''
+  const hm = s.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/)
+  if (hm) return `${hm[1].padStart(2, '0')}:${hm[2]}${hm[3] ? `:${hm[3]}` : ''}`
+  const compact = s.match(/^(\d{2})(\d{2})(\d{2})$/)
+  if (compact) return `${compact[1]}:${compact[2]}:${compact[3]}`
   return s
 }
 
@@ -62,6 +73,7 @@ export function parseIngCsv(csvText) {
       amount_cents: amountCents,
       mutation_type: pick(row, COL.type),
       memo: pick(row, COL.memo),
+      booking_time: parseIngTime(pick(row, COL.time)),
       raw_account: pick(row, COL.account),
     }
   })

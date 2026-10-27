@@ -42,6 +42,7 @@ create table if not exists public.transactions (
   amount_cents bigint not null,
   mutation_type text,
   memo text,
+  booking_time text,
   category_id uuid references public.categories (id) on delete set null,
   category_source text,
   rule_id uuid references public.rules (id) on delete set null,

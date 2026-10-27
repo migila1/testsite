@@ -53,7 +53,7 @@ export function createSupabaseDb() {
       if (error) throw error
     },
     async listCategories() {
-      const { data, error } = await client.from('categories').select('*').order('sort_order')
+      const { data, error } = await client.from('categories').select('*').order('name')
       if (error) throw error
       return data ?? []
     },

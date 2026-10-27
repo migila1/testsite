@@ -11,14 +11,10 @@ export function TxAmount({ cents, className = '' }) {
 
 export function TxRow({ tx, categoryName, categoryColor, onSelect }) {
   const hasCategoryColor = Boolean(categoryColor)
-  const memo = String(tx.memo ?? '').trim()
-  const hoverHint = memo ? `Mededelingen: ${memo}` : undefined
-
   return (
     <button
       type="button"
       onClick={() => onSelect?.(tx)}
-      title={hoverHint}
       className={`flex w-full min-h-11 items-start gap-3 rounded-xl py-2 pr-2 text-left hover:bg-slate-50 active:bg-slate-100 ${
         hasCategoryColor ? 'border-l-4 pl-3' : 'pl-2'
       }`}

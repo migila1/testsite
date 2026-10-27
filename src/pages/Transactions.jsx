@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import CategoryNameInput from '../components/CategoryNameInput.jsx'
 import FilterBar from '../components/FilterBar.jsx'
+import TransactionDetail from '../components/TransactionDetail.jsx'
 import { TxRow } from '../components/TransactionParts.jsx'
 import Button from '../components/ui/Button.jsx'
 import Card from '../components/ui/Card.jsx'
@@ -19,6 +20,7 @@ export default function Transactions() {
   const [month, setMonth] = useState('')
   const [sort, setSort] = useState('date-desc')
   const [selected, setSelected] = useState(null)
+  const [sheetStep, setSheetStep] = useState('detail')
   const [showNewCategory, setShowNewCategory] = useState(false)
   const [newCatName, setNewCatName] = useState('')
   const [newCatColor, setNewCatColor] = useState('#0f766e')
@@ -28,12 +30,14 @@ export default function Transactions() {
 
   useEffect(() => {
     if (!selected) {
+      setSheetStep('detail')
       setShowNewCategory(false)
       setNewCatName('')
       setNewCatColor('#0f766e')
       setLearnPattern('')
       setLearnEnabled(true)
     } else {
+      setSheetStep('detail')
       setLearnPattern(suggestPatternFromTransaction(selected))
       setLearnEnabled(true)
     }
@@ -50,15 +54,17 @@ export default function Transactions() {
     return sortTransactions(rows, sort)
   }, [transactions, search, categoryId, month, sort])
 
+  const closeSheet = () => setSelected(null)
+
   const setCategory = async (catId) => {
     if (!selected) return
     if (!catId) {
       await updateTransaction(selected.id, { category_id: null, category_source: null })
-      setSelected(null)
+      closeSheet()
       return
     }
     await assignManualCategory(selected.id, catId, { learnPattern, learnEnabled })
-    setSelected(null)
+    closeSheet()
   }
 
   const useExistingCategory = async (cat) => {
@@ -66,7 +72,7 @@ export default function Transactions() {
     setNewCatBusy(true)
     try {
       await assignManualCategory(selected.id, cat.id, { learnPattern, learnEnabled })
-      setSelected(null)
+      closeSheet()
     } finally {
       setNewCatBusy(false)
     }
@@ -80,7 +86,7 @@ export default function Transactions() {
       const existing = findExactCategory(newCatName, categories)
       if (existing) {
         await assignManualCategory(selected.id, existing.id, { learnPattern, learnEnabled })
-        setSelected(null)
+        closeSheet()
         return
       }
       const saved = await saveCategory({
@@ -89,11 +95,13 @@ export default function Transactions() {
         sort_order: categories.length + 1,
       })
       await assignManualCategory(selected.id, saved.id, { learnPattern, learnEnabled })
-      setSelected(null)
+      closeSheet()
     } finally {
       setNewCatBusy(false)
     }
   }
+
+  const selectedCategoryName = selected?.category_id ? categoryById.get(selected.category_id)?.name : null
 
   return (
     <div className="space-y-4">
@@ -126,10 +134,38 @@ export default function Transactions() {
         </ul>
       </Card>
 
-      <Sheet open={!!selected} title="Categorie wijzigen" onClose={() => setSelected(null)}>
-        {selected && (
+      <Sheet
+        open={!!selected}
+        title={sheetStep === 'detail' ? 'Transactie' : 'Categorie toewijzen'}
+        onClose={closeSheet}
+      >
+        {selected && sheetStep === 'detail' && (
+          <div className="space-y-4">
+            <TransactionDetail tx={selected} categoryName={selectedCategoryName} />
+            <Button className="w-full" onClick={() => setSheetStep('category')}>
+              Categorie toewijzen
+            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="secondary" onClick={() => updateTransaction(selected.id, { excluded: !selected.excluded })}>
+                {selected.excluded ? 'Meenemen in rapport' : 'Uitsluiten'}
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() =>
+                  updateTransaction(selected.id, { is_internal_transfer: !selected.is_internal_transfer })
+                }
+              >
+                {selected.is_internal_transfer ? 'Geen interne transfer' : 'Interne overboeking'}
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {selected && sheetStep === 'category' && (
           <div className="space-y-3">
-            <p className="text-sm text-slate-600">{selected.description}</p>
+            <Button variant="ghost" onClick={() => setSheetStep('detail')}>
+              ← Terug naar details
+            </Button>
             <label className="block text-sm">
               Categorie
               <select
@@ -168,8 +204,8 @@ export default function Transactions() {
                 </label>
               )}
               <p className="text-xs text-slate-600">
-                Toekomstige transacties waarin alle woorden voorkomen (in omschrijving, tegenrekening of mededelingen)
-                krijgen automatisch deze categorie. De suggestie komt vooral uit mededelingen.
+                Kopieer tekst uit mededelingen in het detail scherm. Regels zoeken in omschrijving, tegenrekening en
+                mededelingen.
               </p>
             </div>
 
@@ -210,20 +246,6 @@ export default function Transactions() {
                 </div>
               </form>
             )}
-
-            <div className="flex flex-wrap gap-2">
-              <Button variant="secondary" onClick={() => updateTransaction(selected.id, { excluded: !selected.excluded })}>
-                {selected.excluded ? 'Meenemen in rapport' : 'Uitsluiten'}
-              </Button>
-              <Button
-                variant="secondary"
-                onClick={() =>
-                  updateTransaction(selected.id, { is_internal_transfer: !selected.is_internal_transfer })
-                }
-              >
-                {selected.is_internal_transfer ? 'Geen interne transfer' : 'Interne overboeking'}
-              </Button>
-            </div>
           </div>
         )}
       </Sheet>

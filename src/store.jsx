@@ -182,6 +182,7 @@ export function StoreProvider({ children }) {
         amount_cents: row.amount_cents,
         mutation_type: row.mutation_type,
         memo: row.memo,
+        booking_time: row.booking_time || null,
         fingerprint,
         category_id: null,
         category_source: null,

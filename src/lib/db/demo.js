@@ -121,7 +121,9 @@ export function createDemoDb() {
       persist()
     },
     async listCategories() {
-      return [...state.categories].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+      return [...state.categories].sort((a, b) =>
+        (a.name ?? '').localeCompare(b.name ?? '', 'nl', { sensitivity: 'base' }),
+      )
     },
     async saveCategory(cat) {
       const idx = state.categories.findIndex((c) => c.id === cat.id)
