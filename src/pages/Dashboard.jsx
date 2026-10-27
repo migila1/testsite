@@ -109,6 +109,18 @@ export default function Dashboard() {
 
   const formatChartCents = (cents) => formatCents(chartMode === 'expense' ? -Math.abs(cents) : cents)
 
+  const renderBarAmountLabel = (props) => {
+    const { y, height, value, viewBox } = props
+    if (value == null) return null
+    const right = (viewBox?.x ?? 0) + (viewBox?.width ?? 0) - 2
+    const cy = (y ?? 0) + (height ?? 0) / 2
+    return (
+      <text x={right} y={cy} fill="#334155" fontSize={11} dominantBaseline="middle" textAnchor="end">
+        {formatChartCents(value)}
+      </text>
+    )
+  }
+
   if (loading) return <p className="text-slate-600">Laden…</p>
 
   const monthOptions =
@@ -177,7 +189,7 @@ export default function Dashboard() {
               <BarChart
                 data={byCat}
                 layout="vertical"
-                margin={{ left: chartMode === 'balance' ? 8 : 4, right: 88, top: 4, bottom: 4 }}
+                margin={{ left: chartMode === 'balance' ? 8 : 4, right: 96, top: 4, bottom: 4 }}
               >
                 <XAxis
                   type="number"
@@ -201,7 +213,7 @@ export default function Dashboard() {
                       }
                     />
                   ))}
-                  <LabelList dataKey="totalCents" position="right" formatter={(v) => formatChartCents(v)} />
+                  <LabelList dataKey="totalCents" content={renderBarAmountLabel} />
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
