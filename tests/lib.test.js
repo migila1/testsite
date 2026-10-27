@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { computeFingerprint, fingerprintBaseKey } from '../src/lib/fingerprint.js'
 import { formatCents, parseEuroToCents } from '../src/lib/money.js'
+import { enrichTransaction, extractTimeFromText } from '../src/lib/enrichTransaction.js'
 import { findCategorySuggestions, findExactCategory } from '../src/lib/categorySuggest.js'
 import { applyInternalTransferDetection, normalizeIban } from '../src/lib/internalTransfer.js'
 import { sortTransactions } from '../src/lib/sortTransactions.js'
@@ -32,6 +33,27 @@ describe('fingerprint', () => {
     const f1 = await computeFingerprint(tx, 1)
     expect(f0).not.toBe(f1)
     expect(fingerprintBaseKey(tx)).toContain('a1')
+  })
+})
+
+describe('enrichTransaction', () => {
+  it('haalt tijd uit mededelingen', () => {
+    expect(extractTimeFromText('Betaling verwerkt om 14:32')).toBe('14:32')
+    const tx = enrichTransaction({
+      description: 'Winkel',
+      memo: 'Transactie 09:15 locatie Amsterdam',
+      booking_time: null,
+    })
+    expect(tx.booking_time).toBe('09:15')
+  })
+
+  it('haalt iban uit mededelingen', () => {
+    const tx = enrichTransaction({
+      description: 'Overboeking',
+      memo: 'Van NL91ABNA0417164300',
+      counterparty_iban: '',
+    })
+    expect(tx.counterparty_iban).toMatch(/NL91ABNA0417164300/)
   })
 })
 

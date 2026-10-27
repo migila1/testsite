@@ -7,6 +7,7 @@ import Button from '../components/ui/Button.jsx'
 import Card from '../components/ui/Card.jsx'
 import Sheet from '../components/ui/Sheet.jsx'
 import { findExactCategory } from '../lib/categorySuggest.js'
+import { enrichTransaction } from '../lib/enrichTransaction.js'
 import { suggestPatternFromTransaction } from '../lib/learnRule.js'
 import { sortTransactions } from '../lib/sortTransactions.js'
 import { transactionMatchText } from '../lib/transactionText.js'
@@ -38,7 +39,7 @@ export default function Transactions() {
       setLearnEnabled(true)
     } else {
       setSheetStep('detail')
-      setLearnPattern(suggestPatternFromTransaction(selected))
+      setLearnPattern(suggestPatternFromTransaction(enrichTransaction(selected)))
       setLearnEnabled(true)
     }
   }, [selected])

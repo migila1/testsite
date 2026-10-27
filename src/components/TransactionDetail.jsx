@@ -1,3 +1,4 @@
+import { enrichTransaction } from '../lib/enrichTransaction.js'
 import { formatCents } from '../lib/money.js'
 import { TxAmount } from './TransactionParts.jsx'
 
@@ -18,26 +19,27 @@ function DetailRow({ label, children }) {
 }
 
 export default function TransactionDetail({ tx, categoryName }) {
-  const memo = String(tx.memo ?? '').trim()
+  const view = enrichTransaction(tx)
+  const memo = String(view.memo ?? '').trim()
 
   return (
     <dl className="divide-y divide-slate-100">
       <DetailRow label="Bedrag">
         <TxAmount cents={tx.amount_cents} className="text-lg" />
       </DetailRow>
-      <DetailRow label="Datum">{formatDateNl(tx.booking_date)}</DetailRow>
-      <DetailRow label="Tijd">{tx.booking_time?.trim() || '—'}</DetailRow>
-      <DetailRow label="Type">{tx.mutation_type?.trim() || '—'}</DetailRow>
+      <DetailRow label="Datum">{formatDateNl(view.booking_date)}</DetailRow>
+      <DetailRow label="Tijd">{view.booking_time?.trim() || '—'}</DetailRow>
+      <DetailRow label="Type">{view.mutation_type?.trim() || '—'}</DetailRow>
       <DetailRow label="Omschrijving">
-        <span className="select-text break-words">{tx.description?.trim() || '—'}</span>
+        <span className="select-text break-words">{view.description?.trim() || '—'}</span>
       </DetailRow>
       <DetailRow label="Tegenrekening">
         <div className="select-text space-y-1 break-all">
-          {tx.counterparty_name?.trim() && <p>{tx.counterparty_name}</p>}
-          {tx.counterparty_iban?.trim() ? (
-            <p className="font-mono text-xs text-slate-600">{tx.counterparty_iban}</p>
+          {view.counterparty_name?.trim() && <p>{view.counterparty_name}</p>}
+          {view.counterparty_iban?.trim() ? (
+            <p className="font-mono text-xs text-slate-600">{view.counterparty_iban}</p>
           ) : (
-            !tx.counterparty_name?.trim() && <p>—</p>
+            !view.counterparty_name?.trim() && <p>—</p>
           )}
         </div>
       </DetailRow>

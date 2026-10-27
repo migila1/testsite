@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { useAuth } from './auth.jsx'
 import { createDb } from './lib/db/index.js'
+import { enrichTransaction, enrichmentPatch } from './lib/enrichTransaction.js'
 import { applyInternalTransferDetection } from './lib/internalTransfer.js'
 import { buildLearnedRuleUpsert, normalizePattern, suggestPatternFromTransaction } from './lib/learnRule.js'
 import { applyRules } from './lib/rules.js'
@@ -34,7 +35,20 @@ export function StoreProvider({ children }) {
       setAccounts(a)
       setCategories(c)
       setRules(r)
-      setTransactions(t)
+      let enrichedList = t
+      const persistPatches = []
+      for (const tx of t) {
+        const enriched = enrichTransaction(tx)
+        const patch = enrichmentPatch(tx, enriched)
+        if (Object.keys(patch).length) persistPatches.push({ id: tx.id, patch })
+      }
+      for (const { id, patch } of persistPatches) {
+        await db.updateTransaction(id, patch)
+      }
+      if (persistPatches.length) {
+        enrichedList = await db.listTransactions()
+      }
+      setTransactions(enrichedList)
       setAdjustments(adj)
       setError(null)
     } catch (e) {
@@ -173,7 +187,7 @@ export function StoreProvider({ children }) {
         },
         occ,
       )
-      prepared.push({
+      const enriched = enrichTransaction({
         account_id: accountId,
         booking_date: row.booking_date,
         description: row.description,
@@ -183,6 +197,10 @@ export function StoreProvider({ children }) {
         mutation_type: row.mutation_type,
         memo: row.memo,
         booking_time: row.booking_time || null,
+      })
+
+      prepared.push({
+        ...enriched,
         fingerprint,
         category_id: null,
         category_source: null,
