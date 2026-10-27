@@ -146,10 +146,16 @@ export function createDemoDb() {
     },
     async saveRule(rule) {
       const idx = state.rules.findIndex((r) => r.id === rule.id)
-      if (idx >= 0) state.rules[idx] = rule
-      else state.rules.push({ ...rule, id: rule.id ?? uid() })
+      let saved
+      if (idx >= 0) {
+        state.rules[idx] = rule
+        saved = state.rules[idx]
+      } else {
+        saved = { ...rule, id: rule.id ?? uid() }
+        state.rules.push(saved)
+      }
       persist()
-      return rule
+      return saved
     },
     async deleteRule(id) {
       state.rules = state.rules.filter((r) => r.id !== id)

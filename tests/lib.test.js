@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { computeFingerprint, fingerprintBaseKey } from '../src/lib/fingerprint.js'
 import { formatCents, parseEuroToCents } from '../src/lib/money.js'
+import { buildLearnedRuleUpsert, mergePatternWords } from '../src/lib/learnRule.js'
 import { applyRules } from '../src/lib/rules.js'
 import { filterForReports, sumByCategory } from '../src/lib/stats.js'
 
@@ -31,7 +32,37 @@ describe('fingerprint', () => {
   })
 })
 
+describe('learnRule', () => {
+  it('voegt woorden samen in één regel', () => {
+    expect(mergePatternWords('albert heijn', 'heijn rotterdam')).toBe('albert heijn rotterdam')
+  })
+
+  it('breidt bestaande leerregel uit i.p.v. nieuwe per woord', () => {
+    const existing = [
+      {
+        id: 'r1',
+        pattern: 'spotify',
+        match_type: 'all_words',
+        category_id: 'c1',
+        active: true,
+      },
+    ]
+    const result = buildLearnedRuleUpsert(existing, { pattern: 'spotify premium', category_id: 'c1' })
+    expect(result.isNew).toBe(false)
+    expect(result.rule.pattern).toBe('spotify premium')
+  })
+})
+
 describe('rules', () => {
+  it('matcht all_words als alle termen voorkomen', () => {
+    const txs = [{ id: '1', description: 'SPOTIFY PREMIUM NL', category_id: null, category_source: null }]
+    const rules = [
+      { id: 'r1', pattern: 'spotify premium', match_type: 'all_words', category_id: 'c1', active: true, priority: 1 },
+    ]
+    const out = applyRules(txs, rules)
+    expect(out[0].category_id).toBe('c1')
+  })
+
   it('overschrijft handmatige categorie niet', () => {
     const txs = [
       { id: '1', description: 'spotify', category_id: 'cat-manual', category_source: 'manual' },

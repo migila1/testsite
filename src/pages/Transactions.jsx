@@ -4,10 +4,12 @@ import { TxRow } from '../components/TransactionParts.jsx'
 import Button from '../components/ui/Button.jsx'
 import Card from '../components/ui/Card.jsx'
 import Sheet from '../components/ui/Sheet.jsx'
+import { suggestPatternFromTransaction } from '../lib/learnRule.js'
 import { useStore } from '../store.jsx'
 
 export default function Transactions() {
-  const { transactions, categories, categoryById, updateTransaction, saveCategory, loading } = useStore()
+  const { transactions, categories, categoryById, updateTransaction, assignManualCategory, saveCategory, loading } =
+    useStore()
   const [search, setSearch] = useState('')
   const [categoryId, setCategoryId] = useState('')
   const [month, setMonth] = useState('')
@@ -16,12 +18,19 @@ export default function Transactions() {
   const [newCatName, setNewCatName] = useState('')
   const [newCatColor, setNewCatColor] = useState('#0f766e')
   const [newCatBusy, setNewCatBusy] = useState(false)
+  const [learnPattern, setLearnPattern] = useState('')
+  const [learnEnabled, setLearnEnabled] = useState(true)
 
   useEffect(() => {
     if (!selected) {
       setShowNewCategory(false)
       setNewCatName('')
       setNewCatColor('#0f766e')
+      setLearnPattern('')
+      setLearnEnabled(true)
+    } else {
+      setLearnPattern(suggestPatternFromTransaction(selected))
+      setLearnEnabled(true)
     }
   }, [selected])
 
@@ -36,10 +45,12 @@ export default function Transactions() {
 
   const setCategory = async (catId) => {
     if (!selected) return
-    await updateTransaction(selected.id, {
-      category_id: catId || null,
-      category_source: catId ? 'manual' : null,
-    })
+    if (!catId) {
+      await updateTransaction(selected.id, { category_id: null, category_source: null })
+      setSelected(null)
+      return
+    }
+    await assignManualCategory(selected.id, catId, { learnPattern, learnEnabled })
     setSelected(null)
   }
 
@@ -53,10 +64,7 @@ export default function Transactions() {
         color: newCatColor,
         sort_order: categories.length + 1,
       })
-      await updateTransaction(selected.id, {
-        category_id: saved.id,
-        category_source: 'manual',
-      })
+      await assignManualCategory(selected.id, saved.id, { learnPattern, learnEnabled })
       setSelected(null)
     } finally {
       setNewCatBusy(false)
@@ -111,6 +119,33 @@ export default function Transactions() {
                 ))}
               </select>
             </label>
+
+            <div className="space-y-2 rounded-xl border border-teal-100 bg-teal-50/50 p-3 text-sm">
+              <label className="flex min-h-11 cursor-pointer items-center gap-2">
+                <input
+                  type="checkbox"
+                  className="h-5 w-5"
+                  checked={learnEnabled}
+                  onChange={(e) => setLearnEnabled(e.target.checked)}
+                />
+                <span>Onthoud als regel voor vergelijkbare transacties</span>
+              </label>
+              {learnEnabled && (
+                <label className="block">
+                  Woorden in één regel (spatie tussen woorden)
+                  <input
+                    className="mt-1 min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3"
+                    value={learnPattern}
+                    onChange={(e) => setLearnPattern(e.target.value)}
+                    placeholder="bijv. albert heijn"
+                  />
+                </label>
+              )}
+              <p className="text-xs text-slate-600">
+                Toekomstige transacties waarin alle woorden voorkomen krijgen automatisch deze categorie. Bestaande
+                regels voor dezelfde categorie worden uitgebreid, niet per woord gesplitst.
+              </p>
+            </div>
 
             {!showNewCategory ? (
               <Button type="button" variant="ghost" className="w-full justify-center" onClick={() => setShowNewCategory(true)}>

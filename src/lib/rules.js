@@ -14,10 +14,15 @@ export function applyRules(transactions, rules) {
       if (!rule.active) continue
       const needle = (rule.pattern ?? '').toLowerCase()
       if (!needle) continue
-      const match =
-        rule.match_type === 'regex'
-          ? safeRegex(rule.pattern).test(hay)
-          : hay.includes(needle)
+      let match = false
+      if (rule.match_type === 'regex') {
+        match = safeRegex(rule.pattern).test(hay)
+      } else if (rule.match_type === 'all_words') {
+        const words = needle.split(/\s+/).filter(Boolean)
+        match = words.length > 0 && words.every((w) => hay.includes(w))
+      } else {
+        match = hay.includes(needle)
+      }
       if (match) {
         return {
           ...tx,

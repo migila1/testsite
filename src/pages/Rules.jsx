@@ -13,7 +13,7 @@ export default function Rules() {
     if (!pattern.trim() || !categoryId) return
     await saveRule({
       pattern: pattern.trim(),
-      match_type: 'contains',
+      match_type: 'all_words',
       category_id: categoryId,
       priority: 50,
       active: true,
@@ -26,12 +26,12 @@ export default function Rules() {
       <Card title="Nieuwe regel">
         <form onSubmit={add} className="grid gap-3">
           <label className="text-sm">
-            Bevat tekst
+            Woorden (één regel)
             <input
               className="mt-1 min-h-11 w-full rounded-xl border border-slate-200 px-3"
               value={pattern}
               onChange={(e) => setPattern(e.target.value)}
-              placeholder="bijv. spotify"
+              placeholder="bijv. spotify premium"
             />
           </label>
           <label className="text-sm">
@@ -46,7 +46,10 @@ export default function Rules() {
           </label>
           <Button type="submit">Regel opslaan</Button>
         </form>
-        <p className="mt-2 text-xs text-slate-500">Handmatige categorieën worden nooit overschreven.</p>
+        <p className="mt-2 text-xs text-slate-500">
+          Alle woorden moeten in de omschrijving voorkomen. Handmatige categorieën worden nooit overschreven. Bij
+          categoriseren op Transacties worden regels automatisch aangemaakt of uitgebreid.
+        </p>
       </Card>
       <Card
         title="Regels"

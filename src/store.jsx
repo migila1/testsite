@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { useAuth } from './auth.jsx'
 import { createDb } from './lib/db/index.js'
+import { buildLearnedRuleUpsert, normalizePattern, suggestPatternFromTransaction } from './lib/learnRule.js'
 import { applyRules } from './lib/rules.js'
 import { computeFingerprint, fingerprintBaseKey } from './lib/fingerprint.js'
 
@@ -107,6 +108,29 @@ export function StoreProvider({ children }) {
     await refresh()
   }
 
+  /** Handmatige categorie + optionele leerregel (meerdere woorden in één regel). */
+  const assignManualCategory = async (txId, categoryId, { learnPattern = '', learnEnabled = true } = {}) => {
+    const tx = transactions.find((t) => t.id === txId)
+    await db.updateTransaction(txId, {
+      category_id: categoryId || null,
+      category_source: categoryId ? 'manual' : null,
+    })
+
+    if (learnEnabled && categoryId && tx) {
+      const pattern = normalizePattern(learnPattern) || suggestPatternFromTransaction(tx)
+      const currentRules = await db.listRules()
+      const upsert = buildLearnedRuleUpsert(currentRules, { pattern, category_id: categoryId })
+      if (upsert) {
+        const savedRule = await db.saveRule(upsert.rule)
+        const currentTxs = await db.listTransactions()
+        const nextRules = [...currentRules.filter((r) => r.id !== savedRule.id), savedRule]
+        const updated = applyRules(currentTxs, nextRules)
+        await db.replaceAllTransactions(updated)
+      }
+    }
+    await refresh()
+  }
+
   const importRows = async (accountId, parsedRows) => {
     const existing = await db.listTransactions()
     const baseCounts = new Map()
@@ -188,6 +212,7 @@ export function StoreProvider({ children }) {
     saveRule,
     deleteRule,
     updateTransaction,
+    assignManualCategory,
     importRows,
     reapplyRules,
   }
