@@ -14,8 +14,16 @@ import { transactionMatchText } from '../lib/transactionText.js'
 import { useStore } from '../store.jsx'
 
 export default function Transactions() {
-  const { transactions, categories, categoryById, updateTransaction, assignManualCategory, saveCategory, loading } =
-    useStore()
+  const {
+    transactions,
+    categories,
+    categoryById,
+    updateTransaction,
+    assignManualCategory,
+    assignManualCategoryBulk,
+    saveCategory,
+    loading,
+  } = useStore()
   const [search, setSearch] = useState('')
   const [categoryId, setCategoryId] = useState('')
   const [month, setMonth] = useState('')
@@ -28,6 +36,11 @@ export default function Transactions() {
   const [newCatBusy, setNewCatBusy] = useState(false)
   const [learnPattern, setLearnPattern] = useState('')
   const [learnEnabled, setLearnEnabled] = useState(true)
+  const [selectionMode, setSelectionMode] = useState(false)
+  const [selectedIds, setSelectedIds] = useState(() => new Set())
+  const [bulkSheetOpen, setBulkSheetOpen] = useState(false)
+  const [bulkCategoryId, setBulkCategoryId] = useState('')
+  const [bulkBusy, setBulkBusy] = useState(false)
 
   useEffect(() => {
     if (!selected) {
@@ -56,6 +69,45 @@ export default function Transactions() {
   }, [transactions, search, categoryId, month, sort])
 
   const closeSheet = () => setSelected(null)
+
+  const toggleSelected = (tx) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(tx.id)) next.delete(tx.id)
+      else next.add(tx.id)
+      return next
+    })
+  }
+
+  const selectAllFiltered = () => {
+    setSelectedIds(new Set(filtered.map((t) => t.id)))
+  }
+
+  const clearBulkSelection = () => setSelectedIds(new Set())
+
+  const exitSelectionMode = () => {
+    setSelectionMode(false)
+    clearBulkSelection()
+    setBulkSheetOpen(false)
+    setBulkCategoryId('')
+  }
+
+  const openBulkCategorySheet = () => {
+    if (selectedIds.size === 0) return
+    setBulkCategoryId('')
+    setBulkSheetOpen(true)
+  }
+
+  const applyBulkCategory = async () => {
+    if (selectedIds.size === 0) return
+    setBulkBusy(true)
+    try {
+      await assignManualCategoryBulk([...selectedIds], bulkCategoryId || null)
+      exitSelectionMode()
+    } finally {
+      setBulkBusy(false)
+    }
+  }
 
   const setCategory = async (catId) => {
     if (!selected) return
@@ -104,8 +156,10 @@ export default function Transactions() {
 
   const selectedCategoryName = selected?.category_id ? categoryById.get(selected.category_id)?.name : null
 
+  const bulkBarVisible = selectionMode && selectedIds.size > 0
+
   return (
-    <div className="space-y-4">
+    <div className={`space-y-4 ${bulkBarVisible ? 'pb-24 lg:pb-0' : ''}`}>
       <Card title="Filter">
         <FilterBar
           search={search}
@@ -119,8 +173,34 @@ export default function Transactions() {
           onSort={setSort}
         />
       </Card>
-      <Card title={`Transacties (${filtered.length})`}>
+      <Card
+        title={`Transacties (${filtered.length})`}
+        action={
+          <div className="flex flex-wrap justify-end gap-1">
+            {selectionMode ? (
+              <>
+                <Button variant="ghost" className="min-h-11 px-2 text-xs" onClick={selectAllFiltered}>
+                  Alles
+                </Button>
+                <Button variant="ghost" className="min-h-11 px-2 text-xs" onClick={clearBulkSelection}>
+                  Geen
+                </Button>
+                <Button variant="secondary" className="min-h-11 px-3 text-xs" onClick={exitSelectionMode}>
+                  Klaar
+                </Button>
+              </>
+            ) : (
+              <Button variant="secondary" className="min-h-11 px-3 text-xs" onClick={() => setSelectionMode(true)}>
+                Selecteren
+              </Button>
+            )}
+          </div>
+        }
+      >
         {loading && <p className="text-slate-500">Laden…</p>}
+        {selectionMode && (
+          <p className="mb-2 text-xs text-slate-600">Tik op transacties om ze te selecteren.</p>
+        )}
         <ul className="divide-y divide-slate-100">
           {filtered.map((tx) => (
             <li key={tx.id}>
@@ -129,11 +209,66 @@ export default function Transactions() {
                 categoryName={tx.category_id ? categoryById.get(tx.category_id)?.name : null}
                 categoryColor={tx.category_id ? categoryById.get(tx.category_id)?.color : null}
                 onSelect={setSelected}
+                selectionMode={selectionMode}
+                selected={selectedIds.has(tx.id)}
+                onToggleSelect={toggleSelected}
               />
             </li>
           ))}
         </ul>
       </Card>
+
+      {selectionMode && selectedIds.size > 0 && (
+        <div
+          className="fixed inset-x-0 z-50 border-t border-slate-200 bg-white/95 px-4 py-3 shadow-lg backdrop-blur lg:static lg:mt-0 lg:rounded-2xl lg:border lg:shadow-sm"
+          style={{ bottom: 'calc(3.75rem + var(--safe-bottom))' }}
+        >
+          <div className="mx-auto flex max-w-lg items-center gap-2 lg:max-w-none">
+            <p className="min-w-0 flex-1 text-sm text-slate-700">
+              <span className="font-semibold tabular-nums">{selectedIds.size}</span> geselecteerd
+            </p>
+            <Button variant="ghost" className="shrink-0" onClick={clearBulkSelection}>
+              Wissen
+            </Button>
+            <Button className="shrink-0" onClick={openBulkCategorySheet}>
+              Categorie…
+            </Button>
+          </div>
+        </div>
+      )}
+
+      <Sheet
+        open={bulkSheetOpen}
+        title={`Categorie — ${selectedIds.size} transactie${selectedIds.size === 1 ? '' : 's'}`}
+        onClose={() => {
+          setBulkSheetOpen(false)
+          setBulkCategoryId('')
+        }}
+      >
+        <div className="space-y-4">
+          <label className="block text-sm">
+            Categorie
+            <select
+              className="mt-1 min-h-11 w-full rounded-xl border border-slate-200 px-3"
+              value={bulkCategoryId}
+              onChange={(e) => setBulkCategoryId(e.target.value)}
+            >
+              <option value="">Geen categorie</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <p className="text-xs text-slate-600">
+            Regels leren kan alleen via één transactie openen en daar categorie toewijzen.
+          </p>
+          <Button className="w-full" disabled={bulkBusy} onClick={applyBulkCategory}>
+            {bulkBusy ? 'Bezig…' : 'Toewijzen'}
+          </Button>
+        </div>
+      </Sheet>
 
       <Sheet
         open={!!selected}

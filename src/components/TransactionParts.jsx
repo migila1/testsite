@@ -9,17 +9,41 @@ export function TxAmount({ cents, className = '' }) {
   )
 }
 
-export function TxRow({ tx, categoryName, categoryColor, onSelect }) {
+export function TxRow({
+  tx,
+  categoryName,
+  categoryColor,
+  onSelect,
+  selectionMode = false,
+  selected = false,
+  onToggleSelect,
+}) {
   const hasCategoryColor = Boolean(categoryColor)
+  const handleClick = () => {
+    if (selectionMode) onToggleSelect?.(tx)
+    else onSelect?.(tx)
+  }
   return (
     <button
       type="button"
-      onClick={() => onSelect?.(tx)}
+      onClick={handleClick}
+      aria-pressed={selectionMode ? selected : undefined}
       className={`flex w-full min-h-11 items-start gap-3 rounded-xl py-2 pr-2 text-left hover:bg-slate-50 active:bg-slate-100 ${
-        hasCategoryColor ? 'border-l-4 pl-3' : 'pl-2'
-      }`}
+        selectionMode && selected ? 'bg-teal-50/80 ring-1 ring-teal-200' : ''
+      } ${hasCategoryColor ? 'border-l-4 pl-3' : 'pl-2'}`}
       style={hasCategoryColor ? { borderLeftColor: categoryColor } : undefined}
     >
+      {selectionMode && (
+        <span className="flex shrink-0 items-center self-center" aria-hidden>
+          <span
+            className={`flex h-5 w-5 items-center justify-center rounded border ${
+              selected ? 'border-teal-600 bg-teal-600 text-white' : 'border-slate-300 bg-white'
+            }`}
+          >
+            {selected ? '✓' : ''}
+          </span>
+        </span>
+      )}
       <div className="min-w-0 flex-1">
         <p className="truncate font-medium text-slate-900">{tx.description}</p>
         <p className="text-xs text-slate-500">

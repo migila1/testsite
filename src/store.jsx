@@ -151,6 +151,18 @@ export function StoreProvider({ children }) {
     await refresh()
   }
 
+  const assignManualCategoryBulk = async (txIds, categoryId) => {
+    const ids = [...new Set(txIds)].filter(Boolean)
+    if (!ids.length) return
+    for (const txId of ids) {
+      await db.updateTransaction(txId, {
+        category_id: categoryId || null,
+        category_source: categoryId ? 'manual' : null,
+      })
+    }
+    await refresh()
+  }
+
   const importRows = async (accountId, parsedRows) => {
     const existing = await db.listTransactions()
     const baseCounts = new Map()
@@ -269,6 +281,7 @@ export function StoreProvider({ children }) {
     deleteRule,
     updateTransaction,
     assignManualCategory,
+    assignManualCategoryBulk,
     importRows,
     reapplyRules,
     saveAdjustment,
