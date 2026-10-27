@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Bar, BarChart, Cell, LabelList, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { Bar, BarChart, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import Button from '../components/ui/Button.jsx'
 import Card from '../components/ui/Card.jsx'
 import { formatCents, parseEuroToCents } from '../lib/money.js'
@@ -122,46 +122,6 @@ export default function Dashboard() {
     return '#334155'
   }
 
-  const renderBarAmountLabel = (props) => {
-    const { y, height, value, viewBox } = props
-    if (value == null) return null
-    const right = (viewBox?.x ?? 0) + (viewBox?.width ?? 0) - 2
-    const cy = (y ?? 0) + (height ?? 0) / 2
-    return (
-      <text
-        x={right}
-        y={cy}
-        fill={chartLabelColor(value)}
-        fontSize={11}
-        dominantBaseline="middle"
-        textAnchor="end"
-      >
-        {formatChartLabel(value)}
-      </text>
-    )
-  }
-
-  /** Saldo: staven altijd naar rechts (magnitude); label toont teken, vast rechts in het diagram. */
-  const renderBalanceBarLabel = (props) => {
-    const { y, height, payload, viewBox } = props
-    const value = payload?.totalCents
-    if (value == null) return null
-    const right = (viewBox?.x ?? 0) + (viewBox?.width ?? 0) - 2
-    const cy = (y ?? 0) + (height ?? 0) / 2
-    return (
-      <text
-        x={right}
-        y={cy}
-        fill={chartLabelColor(value)}
-        fontSize={11}
-        dominantBaseline="middle"
-        textAnchor="end"
-      >
-        {formatChartLabel(value)}
-      </text>
-    )
-  }
-
   if (loading) return <p className="text-slate-600">Laden…</p>
 
   const monthOptions =
@@ -225,39 +185,59 @@ export default function Dashboard() {
         {byCat.length === 0 ? (
           <p className="text-sm text-slate-500">{modeMeta.empty}</p>
         ) : (
-          <div className="w-full min-w-0" style={{ height: chartHeight }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={byCat}
-                layout="vertical"
-                margin={{ left: 4, right: 96, top: 4, bottom: 4 }}
-              >
-                <XAxis type="number" hide domain={chartMode === 'balance' ? [0, 'dataMax'] : [0, 'dataMax']} />
-                <YAxis type="category" dataKey="name" width={96} tick={{ fontSize: 11 }} />
-                <Tooltip
-                  formatter={(v, _name, item) =>
-                    formatChartLabel(chartMode === 'balance' ? item?.payload?.totalCents : v)
-                  }
-                />
-                <Bar dataKey={chartMode === 'balance' ? 'barMagnitude' : 'totalCents'} radius={4}>
-                  {byCat.map((entry) => (
-                    <Cell
-                      key={entry.categoryId}
-                      fill={
-                        chartMode === 'balance' && entry.totalCents < 0
-                          ? '#dc2626'
-                          : chartMode === 'balance' && entry.totalCents > 0
-                            ? '#059669'
-                            : entry.color
-                      }
-                    />
-                  ))}
-                  <LabelList
-                    content={chartMode === 'balance' ? renderBalanceBarLabel : renderBarAmountLabel}
+          <div className="flex w-full min-w-0" style={{ height: chartHeight }}>
+            <div className="min-w-0 flex-1">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={byCat}
+                  layout="vertical"
+                  margin={{ left: 4, right: 8, top: 4, bottom: 4 }}
+                >
+                  <XAxis type="number" hide domain={[0, 'dataMax']} />
+                  <YAxis type="category" dataKey="name" width={96} tick={{ fontSize: 11 }} />
+                  <Tooltip
+                    formatter={(v, _name, item) =>
+                      formatChartLabel(item?.payload?.totalCents ?? v)
+                    }
                   />
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+                  <Bar
+                    dataKey={chartMode === 'balance' ? 'barMagnitude' : 'totalCents'}
+                    radius={4}
+                    isAnimationActive={false}
+                  >
+                    {byCat.map((entry) => (
+                      <Cell
+                        key={entry.categoryId}
+                        fill={
+                          chartMode === 'balance' && entry.totalCents < 0
+                            ? '#dc2626'
+                            : chartMode === 'balance' && entry.totalCents > 0
+                              ? '#059669'
+                              : entry.color
+                        }
+                      />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+            <div
+              className="grid w-[5.25rem] shrink-0 text-[11px] tabular-nums leading-none"
+              style={{
+                gridTemplateRows: `repeat(${byCat.length}, 1fr)`,
+                paddingTop: 4,
+                paddingBottom: 4,
+              }}
+              aria-hidden
+            >
+              {byCat.map((row) => (
+                <div key={row.categoryId} className="flex items-center justify-end text-right">
+                  <span style={{ color: chartLabelColor(row.totalCents) }}>
+                    {formatChartLabel(row.totalCents)}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </Card>
