@@ -33,14 +33,26 @@ export default function Categories() {
       <Card title="Categorieën">
         <ul className="divide-y divide-slate-100">
           {categories.map((c) => (
-            <li key={c.id} className="flex min-h-11 items-center justify-between gap-2 py-2">
-              <span className="flex items-center gap-2">
-                <span className="inline-block h-3 w-3 rounded-full" style={{ background: c.color }} />
-                {c.name}
+            <li key={c.id} className="flex min-h-11 flex-wrap items-center justify-between gap-2 py-2">
+              <span className="flex min-w-0 flex-1 items-center gap-2">
+                <span className="inline-block h-3 w-3 shrink-0 rounded-full" style={{ background: c.color }} />
+                <span className="truncate font-medium">{c.name}</span>
               </span>
-              <Button variant="ghost" onClick={() => deleteCategory(c.id)}>
-                Verwijderen
-              </Button>
+              <div className="flex items-center gap-2">
+                <label className="sr-only" htmlFor={`cat-color-${c.id}`}>
+                  Kleur van {c.name}
+                </label>
+                <input
+                  id={`cat-color-${c.id}`}
+                  type="color"
+                  className="min-h-11 w-14 cursor-pointer rounded-xl border border-slate-200 p-1"
+                  value={c.color ?? '#64748b'}
+                  onChange={(e) => saveCategory({ ...c, color: e.target.value })}
+                />
+                <Button variant="ghost" onClick={() => deleteCategory(c.id)}>
+                  Verwijderen
+                </Button>
+              </div>
             </li>
           ))}
         </ul>
