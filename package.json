@@ -11,6 +11,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@supabase/server": "^1.9.2",
     "@supabase/supabase-js": "^2.49.8",
     "papaparse": "^5.5.2",
     "react": "^19.0.0",
