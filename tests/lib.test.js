@@ -2,9 +2,10 @@ import { describe, expect, it } from 'vitest'
 import { computeFingerprint, fingerprintBaseKey } from '../src/lib/fingerprint.js'
 import { formatCents, parseEuroToCents } from '../src/lib/money.js'
 import { applyInternalTransferDetection, normalizeIban } from '../src/lib/internalTransfer.js'
+import { sortTransactions } from '../src/lib/sortTransactions.js'
 import { buildLearnedRuleUpsert, mergePatternWords } from '../src/lib/learnRule.js'
 import { applyRules } from '../src/lib/rules.js'
-import { filterForReports, sumByCategory } from '../src/lib/stats.js'
+import { filterForReports, sumByCategory, sumByCategoryForMode } from '../src/lib/stats.js'
 
 describe('money', () => {
   it('parseert NL bedrag naar centen', () => {
@@ -30,6 +31,18 @@ describe('fingerprint', () => {
     const f1 = await computeFingerprint(tx, 1)
     expect(f0).not.toBe(f1)
     expect(fingerprintBaseKey(tx)).toContain('a1')
+  })
+})
+
+describe('sortTransactions', () => {
+  it('sorteert bedrag hoog naar laag', () => {
+    const txs = [
+      { id: '1', booking_date: '2026-01-01', amount_cents: -100 },
+      { id: '2', booking_date: '2026-01-02', amount_cents: 50000 },
+      { id: '3', booking_date: '2026-01-03', amount_cents: -5000 },
+    ]
+    const sorted = sortTransactions(txs, 'amount-desc')
+    expect(sorted.map((t) => t.id)).toEqual(['2', '1', '3'])
   })
 })
 
@@ -110,6 +123,14 @@ describe('stats', () => {
     ]
     expect(filterForReports(txs)).toHaveLength(1)
     expect(sumByCategory(txs)[0].totalCents).toBe(300)
+  })
+
+  it('berekent saldo per categorie', () => {
+    const txs = [
+      { booking_date: '2026-01-01', amount_cents: 10000, excluded: false, is_internal_transfer: false, category_id: 'c1' },
+      { booking_date: '2026-01-02', amount_cents: -3000, excluded: false, is_internal_transfer: false, category_id: 'c1' },
+    ]
+    expect(sumByCategoryForMode(txs, { mode: 'balance' })[0].totalCents).toBe(7000)
   })
 
   it('filtert op geselecteerde maanden', () => {

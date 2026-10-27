@@ -29,29 +29,55 @@ export function monthsForYear(transactions, year) {
   return [...set].sort()
 }
 
+/** @typedef {'expense' | 'income' | 'balance'} CategoryChartMode */
+
 /**
- * @param {Array} adjustments { month, category_id, amount_cents }
- * @param {string[] | null} months
+ * @param {CategoryChartMode} mode
+ * @param {Array} adjustments alleen bij mode expense
  */
-export function sumByCategory(transactions, { months = null, adjustments = [] } = {}) {
+export function sumByCategoryForMode(
+  transactions,
+  { mode = 'expense', months = null, adjustments = [] } = {},
+) {
   const rows = filterByMonths(transactions, months)
   const map = new Map()
+
   for (const tx of rows) {
-    if (tx.amount_cents >= 0) continue
     const id = tx.category_id ?? '__geen__'
-    map.set(id, (map.get(id) ?? 0) + Math.abs(tx.amount_cents))
+    const cents = tx.amount_cents ?? 0
+    if (mode === 'expense') {
+      if (cents >= 0) continue
+      map.set(id, (map.get(id) ?? 0) + Math.abs(cents))
+    } else if (mode === 'income') {
+      if (cents <= 0) continue
+      map.set(id, (map.get(id) ?? 0) + cents)
+    } else {
+      map.set(id, (map.get(id) ?? 0) + cents)
+    }
   }
 
-  const monthSet = months?.length ? new Set(months) : null
-  for (const adj of adjustments) {
-    if (monthSet && !monthSet.has(adj.month)) continue
-    const id = adj.category_id ?? '__geen__'
-    map.set(id, (map.get(id) ?? 0) + Math.abs(adj.amount_cents ?? 0))
+  if (mode === 'expense') {
+    const monthSet = months?.length ? new Set(months) : null
+    for (const adj of adjustments) {
+      if (monthSet && !monthSet.has(adj.month)) continue
+      const id = adj.category_id ?? '__geen__'
+      map.set(id, (map.get(id) ?? 0) + Math.abs(adj.amount_cents ?? 0))
+    }
   }
 
-  return [...map.entries()]
+  const entries = [...map.entries()]
     .map(([categoryId, totalCents]) => ({ categoryId, totalCents }))
-    .sort((a, b) => b.totalCents - a.totalCents)
+    .filter(({ totalCents }) => totalCents !== 0)
+
+  if (mode === 'balance') {
+    return entries.sort((a, b) => b.totalCents - a.totalCents)
+  }
+  return entries.sort((a, b) => b.totalCents - a.totalCents)
+}
+
+/** @deprecated alias — uitgaven per categorie */
+export function sumByCategory(transactions, opts = {}) {
+  return sumByCategoryForMode(transactions, { ...opts, mode: 'expense' })
 }
 
 export function monthlyTotals(transactions) {

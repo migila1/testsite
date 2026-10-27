@@ -5,6 +5,7 @@ import Button from '../components/ui/Button.jsx'
 import Card from '../components/ui/Card.jsx'
 import Sheet from '../components/ui/Sheet.jsx'
 import { suggestPatternFromTransaction } from '../lib/learnRule.js'
+import { sortTransactions } from '../lib/sortTransactions.js'
 import { useStore } from '../store.jsx'
 
 export default function Transactions() {
@@ -13,6 +14,7 @@ export default function Transactions() {
   const [search, setSearch] = useState('')
   const [categoryId, setCategoryId] = useState('')
   const [month, setMonth] = useState('')
+  const [sort, setSort] = useState('date-desc')
   const [selected, setSelected] = useState(null)
   const [showNewCategory, setShowNewCategory] = useState(false)
   const [newCatName, setNewCatName] = useState('')
@@ -35,14 +37,15 @@ export default function Transactions() {
   }, [selected])
 
   const filtered = useMemo(() => {
-    return transactions.filter((t) => {
+    const rows = transactions.filter((t) => {
       if (search && !`${t.description}`.toLowerCase().includes(search.toLowerCase())) return false
       if (categoryId === '__geen__' && t.category_id) return false
       if (categoryId && categoryId !== '__geen__' && t.category_id !== categoryId) return false
       if (month && !(t.booking_date ?? '').startsWith(month)) return false
       return true
     })
-  }, [transactions, search, categoryId, month])
+    return sortTransactions(rows, sort)
+  }, [transactions, search, categoryId, month, sort])
 
   const setCategory = async (catId) => {
     if (!selected) return
@@ -83,6 +86,8 @@ export default function Transactions() {
           categories={categories}
           month={month}
           onMonth={setMonth}
+          sort={sort}
+          onSort={setSort}
         />
       </Card>
       <Card title={`Transacties (${filtered.length})`}>

@@ -8,8 +8,14 @@ import {
   monthlyTotals,
   monthsForYear,
   periodIncomeExpense,
-  sumByCategory,
+  sumByCategoryForMode,
 } from '../lib/stats.js'
+
+const CHART_MODES = [
+  { id: 'expense', label: 'Uitgaven per categorie', empty: 'Geen uitgaven in deze periode.' },
+  { id: 'income', label: 'Inkomsten per categorie', empty: 'Geen inkomsten in deze periode.' },
+  { id: 'balance', label: 'Saldo per categorie', empty: 'Geen saldo per categorie in deze periode.' },
+]
 import { useStore } from '../store.jsx'
 
 function monthLabel(ym) {
@@ -35,17 +41,23 @@ export default function Dashboard() {
   const months = useMemo(() => monthlyTotals(transactions), [transactions])
   const [yearFocus, setYearFocus] = useState(() => years[0] ?? new Date().getFullYear().toString())
   const [selectedMonths, setSelectedMonths] = useState([])
+  const [chartMode, setChartMode] = useState('expense')
 
   const monthKeys = selectedMonths.length ? selectedMonths : null
+  const modeMeta = CHART_MODES.find((m) => m.id === chartMode) ?? CHART_MODES[0]
 
   const byCat = useMemo(() => {
-    return sumByCategory(transactions, { months: monthKeys, adjustments }).map(({ categoryId, totalCents }) => ({
+    return sumByCategoryForMode(transactions, {
+      mode: chartMode,
+      months: monthKeys,
+      adjustments,
+    }).map(({ categoryId, totalCents }) => ({
       categoryId,
       name: categoryId === '__geen__' ? 'Geen categorie' : categoryById.get(categoryId)?.name ?? 'Onbekend',
       totalCents,
       color: categoryId === '__geen__' ? '#94a3b8' : categoryById.get(categoryId)?.color ?? '#0f766e',
     }))
-  }, [transactions, adjustments, monthKeys, categoryById])
+  }, [transactions, adjustments, monthKeys, categoryById, chartMode])
 
   const { income, expense } = useMemo(
     () => periodIncomeExpense(transactions, { months: monthKeys, adjustments }),
@@ -95,6 +107,8 @@ export default function Dashboard() {
 
   const chartHeight = Math.max(200, byCat.length * 36)
 
+  const formatChartCents = (cents) => formatCents(chartMode === 'expense' ? -Math.abs(cents) : cents)
+
   if (loading) return <p className="text-slate-600">Laden…</p>
 
   const monthOptions =
@@ -120,21 +134,56 @@ export default function Dashboard() {
         )}
       </Card>
 
-      <Card title={`Uitgaven per categorie — ${periodTitle(transactions, selectedMonths, yearFocus)}`}>
+      <Card
+        title={`${modeMeta.label} — ${periodTitle(transactions, selectedMonths, yearFocus)}`}
+        action={
+          <div className="flex flex-wrap gap-1">
+            {CHART_MODES.map((m) => (
+              <Button
+                key={m.id}
+                variant={chartMode === m.id ? 'primary' : 'secondary'}
+                className="min-h-11 px-3 text-xs"
+                onClick={() => setChartMode(m.id)}
+              >
+                {m.id === 'expense' ? 'Uitgaven' : m.id === 'income' ? 'Inkomsten' : 'Saldo'}
+              </Button>
+            ))}
+          </div>
+        }
+      >
         {byCat.length === 0 ? (
-          <p className="text-sm text-slate-500">Geen uitgaven in deze periode.</p>
+          <p className="text-sm text-slate-500">{modeMeta.empty}</p>
         ) : (
           <div className="w-full min-w-0" style={{ height: chartHeight }}>
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={byCat} layout="vertical" margin={{ left: 4, right: 88, top: 4, bottom: 4 }}>
-                <XAxis type="number" hide domain={[0, 'dataMax']} />
+              <BarChart
+                data={byCat}
+                layout="vertical"
+                margin={{ left: chartMode === 'balance' ? 8 : 4, right: 88, top: 4, bottom: 4 }}
+              >
+                <XAxis
+                  type="number"
+                  hide={chartMode !== 'balance'}
+                  domain={chartMode === 'balance' ? ['auto', 'auto'] : [0, 'dataMax']}
+                  tick={{ fontSize: 10 }}
+                  tickFormatter={(v) => formatCents(v)}
+                />
                 <YAxis type="category" dataKey="name" width={96} tick={{ fontSize: 11 }} />
-                <Tooltip formatter={(v) => formatCents(v)} />
+                <Tooltip formatter={(v) => formatChartCents(v)} />
                 <Bar dataKey="totalCents" radius={4}>
                   {byCat.map((entry) => (
-                    <Cell key={entry.categoryId} fill={entry.color} />
+                    <Cell
+                      key={entry.categoryId}
+                      fill={
+                        chartMode === 'balance' && entry.totalCents < 0
+                          ? '#dc2626'
+                          : chartMode === 'balance' && entry.totalCents > 0
+                            ? '#059669'
+                            : entry.color
+                      }
+                    />
                   ))}
-                  <LabelList dataKey="totalCents" position="right" formatter={(v) => formatCents(v)} />
+                  <LabelList dataKey="totalCents" position="right" formatter={(v) => formatChartCents(v)} />
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
@@ -147,7 +196,17 @@ export default function Dashboard() {
                 <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: row.color }} />
                 {row.name}
               </span>
-              <span className="font-medium tabular-nums">{formatCents(row.totalCents)}</span>
+              <span
+                className={`font-medium tabular-nums ${
+                  chartMode === 'balance' && row.totalCents < 0
+                    ? 'text-red-700'
+                    : chartMode === 'balance' && row.totalCents > 0
+                      ? 'text-emerald-700'
+                      : ''
+                }`}
+              >
+                {formatChartCents(row.totalCents)}
+              </span>
             </li>
           ))}
         </ul>
