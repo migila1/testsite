@@ -1,4 +1,4 @@
-const CACHE = 'mijn-uitgaven-shell-v1'
+const CACHE = 'mijn-uitgaven-shell-v2'
 const SHELL = ['/', '/index.html', '/manifest.webmanifest', '/favicon.svg']
 
 self.addEventListener('install', (event) => {
@@ -13,23 +13,34 @@ self.addEventListener('activate', (event) => {
   self.clients.claim()
 })
 
+function networkFirst(request) {
+  return fetch(request)
+    .then((res) => {
+      if (res.ok) {
+        caches.open(CACHE).then((cache) => cache.put(request, res.clone()))
+      }
+      return res
+    })
+    .catch(() => caches.open(CACHE).then((cache) => cache.match(request)))
+}
+
 self.addEventListener('fetch', (event) => {
   const { request } = event
   if (request.method !== 'GET') return
   const url = new URL(request.url)
   if (url.origin !== self.location.origin) return
-  if (url.pathname.startsWith('/assets/')) {
-    event.respondWith(caches.open(CACHE).then((cache) => cache.match(request).then((hit) => hit || fetch(request))))
+
+  if (request.mode === 'navigate' || url.pathname === '/' || url.pathname === '/index.html') {
+    event.respondWith(networkFirst(request))
     return
   }
-  if (SHELL.includes(url.pathname) || url.pathname === '/') {
-    event.respondWith(
-      caches.open(CACHE).then((cache) =>
-        cache.match(request).then((hit) => hit || fetch(request).then((res) => {
-          cache.put(request, res.clone())
-          return res
-        })),
-      ),
-    )
+
+  if (url.pathname.startsWith('/assets/')) {
+    event.respondWith(networkFirst(request))
+    return
+  }
+
+  if (SHELL.includes(url.pathname)) {
+    event.respondWith(networkFirst(request))
   }
 })

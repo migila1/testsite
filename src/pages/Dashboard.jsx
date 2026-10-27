@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react'
-import { Bar, BarChart, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import Button from '../components/ui/Button.jsx'
 import Card from '../components/ui/Card.jsx'
 import { formatCents, parseEuroToCents } from '../lib/money.js'
@@ -106,8 +105,6 @@ export default function Dashboard() {
     setAdjLabel('')
   }
 
-  const chartHeight = Math.max(200, byCat.length * 36)
-
   const chartMaxMagnitude = useMemo(() => {
     if (!byCat.length) return 1
     return Math.max(
@@ -199,82 +196,43 @@ export default function Dashboard() {
         {byCat.length === 0 ? (
           <p className="text-sm text-slate-500">{modeMeta.empty}</p>
         ) : (
-          <>
-            <ul className="space-y-1 lg:hidden">
-              {byCat.map((row) => {
-                const magnitude =
-                  chartMode === 'balance' ? row.barMagnitude : Math.abs(row.totalCents)
-                const widthPct = Math.min(100, (magnitude / chartMaxMagnitude) * 100)
-                return (
-                  <li
-                    key={row.categoryId}
-                    className="grid min-h-11 grid-cols-[5.5rem_minmax(0,1fr)_5.25rem] items-center gap-2"
+          <ul className="min-w-0 space-y-1.5">
+            {byCat.map((row) => {
+              const magnitude =
+                chartMode === 'balance' ? row.barMagnitude : Math.abs(row.totalCents)
+              const widthPct = Math.min(100, (magnitude / chartMaxMagnitude) * 100)
+              return (
+                <li
+                  key={row.categoryId}
+                  className="flex min-h-11 min-w-0 items-center gap-2"
+                >
+                  <span
+                    className="w-[4.75rem] shrink-0 truncate text-[11px] leading-tight text-slate-700 sm:w-24"
+                    title={row.name}
                   >
-                    <span className="truncate text-[11px] leading-tight text-slate-700" title={row.name}>
-                      {row.name}
-                    </span>
-                    <div className="h-4 w-full overflow-hidden rounded bg-slate-100">
+                    {row.name}
+                  </span>
+                  <div className="flex min-w-0 flex-1 items-center gap-1.5">
+                    <div
+                      className="relative h-4 min-w-0 flex-1 overflow-hidden rounded bg-slate-100 lg:h-5"
+                      role="presentation"
+                    >
                       <div
-                        className="h-full rounded"
+                        className="absolute inset-y-0 left-0 rounded"
                         style={{ width: `${widthPct}%`, backgroundColor: barFill(row) }}
                       />
                     </div>
                     <span
-                      className="text-right text-[11px] tabular-nums leading-tight"
+                      className="max-w-[46%] shrink-0 whitespace-nowrap text-right text-[10px] tabular-nums leading-none sm:max-w-none sm:text-[11px]"
                       style={{ color: chartLabelColor(row.totalCents) }}
                     >
                       {formatChartLabel(row.totalCents)}
                     </span>
-                  </li>
-                )
-              })}
-            </ul>
-            <div className="hidden w-full min-w-0 lg:flex" style={{ height: chartHeight }}>
-              <div className="min-w-0 flex-1">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={byCat}
-                    layout="vertical"
-                    margin={{ left: 4, right: 8, top: 4, bottom: 4 }}
-                  >
-                    <XAxis type="number" hide domain={[0, 'dataMax']} />
-                    <YAxis type="category" dataKey="name" width={96} tick={{ fontSize: 11 }} />
-                    <Tooltip
-                      formatter={(v, _name, item) =>
-                        formatChartLabel(item?.payload?.totalCents ?? v)
-                      }
-                    />
-                    <Bar
-                      dataKey={chartMode === 'balance' ? 'barMagnitude' : 'totalCents'}
-                      radius={4}
-                      isAnimationActive={false}
-                    >
-                      {byCat.map((entry) => (
-                        <Cell key={entry.categoryId} fill={barFill(entry)} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-              <div
-                className="grid w-[5.25rem] shrink-0 text-[11px] tabular-nums leading-none"
-                style={{
-                  gridTemplateRows: `repeat(${byCat.length}, 1fr)`,
-                  paddingTop: 4,
-                  paddingBottom: 4,
-                }}
-                aria-hidden
-              >
-                {byCat.map((row) => (
-                  <div key={row.categoryId} className="flex items-center justify-end text-right">
-                    <span style={{ color: chartLabelColor(row.totalCents) }}>
-                      {formatChartLabel(row.totalCents)}
-                    </span>
                   </div>
-                ))}
-              </div>
-            </div>
-          </>
+                </li>
+              )
+            })}
+          </ul>
         )}
       </Card>
 
