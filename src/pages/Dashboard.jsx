@@ -116,7 +116,10 @@ export default function Dashboard() {
 
   return (
     <div className="grid gap-4 lg:grid-cols-2">
-      <Card title={`Overzicht — ${periodTitle(transactions, selectedMonths, yearFocus)}`}>
+      <Card
+        title={`Overzicht — ${periodTitle(transactions, selectedMonths, yearFocus)}`}
+        className="hidden lg:block"
+      >
         <dl className="grid grid-cols-2 gap-3 text-sm">
           <div>
             <dt className="text-slate-500">Inkomsten</dt>
@@ -151,6 +154,21 @@ export default function Dashboard() {
           </div>
         }
       >
+        <dl className="mb-3 grid grid-cols-2 gap-2 border-b border-slate-100 pb-3 text-sm lg:hidden">
+          <div>
+            <dt className="text-slate-500">Inkomsten</dt>
+            <dd className="font-semibold text-emerald-700">{formatCents(income)}</dd>
+          </div>
+          <div>
+            <dt className="text-slate-500">Uitgaven</dt>
+            <dd className="font-semibold text-red-700">{formatCents(-expense)}</dd>
+          </div>
+        </dl>
+        {selectedMonths.length > 0 && (
+          <Button variant="ghost" className="mb-2 lg:hidden" onClick={clearSelection}>
+            Toon alle periodes
+          </Button>
+        )}
         {byCat.length === 0 ? (
           <p className="text-sm text-slate-500">{modeMeta.empty}</p>
         ) : (
@@ -189,27 +207,6 @@ export default function Dashboard() {
             </ResponsiveContainer>
           </div>
         )}
-        <ul className="mt-3 divide-y divide-slate-100 text-sm lg:hidden">
-          {byCat.map((row) => (
-            <li key={row.categoryId} className="flex min-h-11 items-center justify-between py-1">
-              <span className="flex items-center gap-2">
-                <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: row.color }} />
-                {row.name}
-              </span>
-              <span
-                className={`font-medium tabular-nums ${
-                  chartMode === 'balance' && row.totalCents < 0
-                    ? 'text-red-700'
-                    : chartMode === 'balance' && row.totalCents > 0
-                      ? 'text-emerald-700'
-                      : ''
-                }`}
-              >
-                {formatChartCents(row.totalCents)}
-              </span>
-            </li>
-          ))}
-        </ul>
       </Card>
 
       <Card title="Jaar & maanden" className="lg:col-span-2">
