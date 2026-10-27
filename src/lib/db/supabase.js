@@ -17,8 +17,31 @@ function withUserId(row, userId) {
 const ADJUSTMENTS_MIGRATION_HINT =
   'Voer supabase/migration_category_adjustments.sql uit in Supabase → SQL Editor (Dashboard eenmalige bedragen).'
 
+const BOOKING_TIME_MIGRATION_HINT =
+  'Voer supabase/migration_booking_time.sql uit in Supabase → SQL Editor (kolom booking_time).'
+
 function isAdjustmentsTableMissing(error) {
   return error?.code === 'PGRST205' && String(error?.message ?? '').includes('category_adjustments')
+}
+
+/** PostgREST: kolom ontbreekt in schema cache (PGRST204 e.d.). */
+function isBookingTimeColumnMissing(error) {
+  const msg = String(error?.message ?? '')
+  return msg.includes('booking_time') && msg.includes('schema cache')
+}
+
+let omitBookingTimeColumn = false
+
+function withoutBookingTime(row) {
+  if (!row || omitBookingTimeColumn) {
+    const { booking_time, ...rest } = row ?? {}
+    return rest
+  }
+  return row
+}
+
+function sanitizeTransactionWrite(row) {
+  return withoutBookingTime(row)
 }
 
 export function createSupabaseDb() {
@@ -100,16 +123,30 @@ export function createSupabaseDb() {
     },
     async upsertTransactions(rows) {
       const userId = await requireUserId(client)
-      const payload = rows.map((row) => withUserId(row, userId))
-      const { data, error } = await client
+      const payload = rows.map((row) => sanitizeTransactionWrite(withUserId(row, userId)))
+      let { data, error } = await client
         .from('transactions')
         .upsert(payload, { onConflict: 'user_id,account_id,fingerprint', ignoreDuplicates: true })
         .select()
+      if (error && isBookingTimeColumnMissing(error)) {
+        omitBookingTimeColumn = true
+        const retry = rows.map((row) => sanitizeTransactionWrite(withUserId(row, userId)))
+        ;({ data, error } = await client
+          .from('transactions')
+          .upsert(retry, { onConflict: 'user_id,account_id,fingerprint', ignoreDuplicates: true })
+          .select())
+      }
       if (error) throw error
       return { inserted: data?.length ?? 0, skipped: payload.length - (data?.length ?? 0) }
     },
     async updateTransaction(id, patch) {
-      const { data, error } = await client.from('transactions').update(patch).eq('id', id).select().single()
+      let body = sanitizeTransactionWrite(patch)
+      let { data, error } = await client.from('transactions').update(body).eq('id', id).select().single()
+      if (error && isBookingTimeColumnMissing(error)) {
+        omitBookingTimeColumn = true
+        body = sanitizeTransactionWrite(patch)
+        ;({ data, error } = await client.from('transactions').update(body).eq('id', id).select().single())
+      }
       if (error) throw error
       return data
     },
@@ -118,8 +155,13 @@ export function createSupabaseDb() {
       const { error } = await client.from('transactions').delete().eq('user_id', userId)
       if (error) throw error
       if (transactions.length) {
-        const payload = transactions.map((row) => withUserId(row, userId))
-        const { error: insErr } = await client.from('transactions').insert(payload)
+        const payload = transactions.map((row) => sanitizeTransactionWrite(withUserId(row, userId)))
+        let { error: insErr } = await client.from('transactions').insert(payload)
+        if (insErr && isBookingTimeColumnMissing(insErr)) {
+          omitBookingTimeColumn = true
+          const retry = transactions.map((row) => sanitizeTransactionWrite(withUserId(row, userId)))
+          ;({ error: insErr } = await client.from('transactions').insert(retry))
+        }
         if (insErr) throw insErr
       }
     },
