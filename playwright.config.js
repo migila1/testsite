@@ -1,8 +1,5 @@
 import { defineConfig } from '@playwright/test'
 
-console.log('Supabase URL:', import.meta.env.VITE_SUPABASE_URL)
-console.log('Supabase key aanwezig:', !!import.meta.env.VITE_SUPABASE_ANON_KEY)
-
 export default defineConfig({
   testDir: './tests',
   testMatch: '**/*.spec.js',
