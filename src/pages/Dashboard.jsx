@@ -107,7 +107,19 @@ export default function Dashboard() {
 
   const chartHeight = Math.max(200, byCat.length * 36)
 
-  const formatChartCents = (cents) => formatCents(chartMode === 'expense' ? -Math.abs(cents) : cents)
+  /** Labels: uitgaven/inkomsten als positief bedrag; saldo met teken. */
+  const formatChartLabel = (cents) => {
+    const n = Number(cents)
+    if (chartMode === 'balance') return formatCents(n)
+    return formatCents(Math.abs(n))
+  }
+
+  const chartLabelColor = (cents) => {
+    const n = Number(cents)
+    if (chartMode === 'balance') return n < 0 ? '#dc2626' : '#059669'
+    if (chartMode === 'income') return '#059669'
+    return '#334155'
+  }
 
   const renderBarAmountLabel = (props) => {
     const { y, height, value, viewBox } = props
@@ -115,8 +127,15 @@ export default function Dashboard() {
     const right = (viewBox?.x ?? 0) + (viewBox?.width ?? 0) - 2
     const cy = (y ?? 0) + (height ?? 0) / 2
     return (
-      <text x={right} y={cy} fill="#334155" fontSize={11} dominantBaseline="middle" textAnchor="end">
-        {formatChartCents(value)}
+      <text
+        x={right}
+        y={cy}
+        fill={chartLabelColor(value)}
+        fontSize={11}
+        dominantBaseline="middle"
+        textAnchor="end"
+      >
+        {formatChartLabel(value)}
       </text>
     )
   }
@@ -199,7 +218,7 @@ export default function Dashboard() {
                   tickFormatter={(v) => formatCents(v)}
                 />
                 <YAxis type="category" dataKey="name" width={96} tick={{ fontSize: 11 }} />
-                <Tooltip formatter={(v) => formatChartCents(v)} />
+                <Tooltip formatter={(v) => formatChartLabel(v)} />
                 <Bar dataKey="totalCents" radius={4}>
                   {byCat.map((entry) => (
                     <Cell
