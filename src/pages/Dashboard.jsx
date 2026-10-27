@@ -55,6 +55,7 @@ export default function Dashboard() {
       categoryId,
       name: categoryId === '__geen__' ? 'Geen categorie' : categoryById.get(categoryId)?.name ?? 'Onbekend',
       totalCents,
+      barMagnitude: Math.abs(totalCents),
       color: categoryId === '__geen__' ? '#94a3b8' : categoryById.get(categoryId)?.color ?? '#0f766e',
     }))
   }, [transactions, adjustments, monthKeys, categoryById, chartMode])
@@ -140,6 +141,27 @@ export default function Dashboard() {
     )
   }
 
+  /** Saldo: staven altijd naar rechts (magnitude); label toont teken, vast rechts in het diagram. */
+  const renderBalanceBarLabel = (props) => {
+    const { y, height, payload, viewBox } = props
+    const value = payload?.totalCents
+    if (value == null) return null
+    const right = (viewBox?.x ?? 0) + (viewBox?.width ?? 0) - 2
+    const cy = (y ?? 0) + (height ?? 0) / 2
+    return (
+      <text
+        x={right}
+        y={cy}
+        fill={chartLabelColor(value)}
+        fontSize={11}
+        dominantBaseline="middle"
+        textAnchor="end"
+      >
+        {formatChartLabel(value)}
+      </text>
+    )
+  }
+
   if (loading) return <p className="text-slate-600">Laden…</p>
 
   const monthOptions =
@@ -208,18 +230,16 @@ export default function Dashboard() {
               <BarChart
                 data={byCat}
                 layout="vertical"
-                margin={{ left: chartMode === 'balance' ? 8 : 4, right: 96, top: 4, bottom: 4 }}
+                margin={{ left: 4, right: 96, top: 4, bottom: 4 }}
               >
-                <XAxis
-                  type="number"
-                  hide={chartMode !== 'balance'}
-                  domain={chartMode === 'balance' ? ['auto', 'auto'] : [0, 'dataMax']}
-                  tick={{ fontSize: 10 }}
-                  tickFormatter={(v) => formatCents(v)}
-                />
+                <XAxis type="number" hide domain={chartMode === 'balance' ? [0, 'dataMax'] : [0, 'dataMax']} />
                 <YAxis type="category" dataKey="name" width={96} tick={{ fontSize: 11 }} />
-                <Tooltip formatter={(v) => formatChartLabel(v)} />
-                <Bar dataKey="totalCents" radius={4}>
+                <Tooltip
+                  formatter={(v, _name, item) =>
+                    formatChartLabel(chartMode === 'balance' ? item?.payload?.totalCents : v)
+                  }
+                />
+                <Bar dataKey={chartMode === 'balance' ? 'barMagnitude' : 'totalCents'} radius={4}>
                   {byCat.map((entry) => (
                     <Cell
                       key={entry.categoryId}
@@ -232,7 +252,9 @@ export default function Dashboard() {
                       }
                     />
                   ))}
-                  <LabelList dataKey="totalCents" content={renderBarAmountLabel} />
+                  <LabelList
+                    content={chartMode === 'balance' ? renderBalanceBarLabel : renderBarAmountLabel}
+                  />
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
