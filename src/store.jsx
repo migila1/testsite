@@ -17,21 +17,24 @@ export function StoreProvider({ children }) {
   const [categories, setCategories] = useState([])
   const [rules, setRules] = useState([])
   const [transactions, setTransactions] = useState([])
+  const [adjustments, setAdjustments] = useState([])
   const [loading, setLoading] = useState(true)
 
   const refresh = useCallback(async () => {
     setLoading(true)
     try {
-      const [a, c, r, t] = await Promise.all([
+      const [a, c, r, t, adj] = await Promise.all([
         db.listAccounts(),
         db.listCategories(),
         db.listRules(),
         db.listTransactions(),
+        db.listAdjustments?.() ?? Promise.resolve([]),
       ])
       setAccounts(a)
       setCategories(c)
       setRules(r)
       setTransactions(t)
+      setAdjustments(adj)
       setError(null)
     } catch (e) {
       setError(e.message ?? String(e))
@@ -47,6 +50,7 @@ export function StoreProvider({ children }) {
       setCategories([])
       setRules([])
       setTransactions([])
+      setAdjustments([])
       setLoading(false)
       return undefined
     }
@@ -194,6 +198,18 @@ export function StoreProvider({ children }) {
     await refresh()
   }
 
+  const saveAdjustment = async (adj) => {
+    if (!db.saveAdjustment) return
+    await db.saveAdjustment(adj)
+    await refresh()
+  }
+
+  const deleteAdjustment = async (id) => {
+    if (!db.deleteAdjustment) return
+    await db.deleteAdjustment(id)
+    await refresh()
+  }
+
   const value = {
     db,
     ready,
@@ -203,6 +219,7 @@ export function StoreProvider({ children }) {
     categories,
     rules,
     transactions,
+    adjustments,
     categoryById,
     refresh,
     saveCategory,
@@ -215,6 +232,8 @@ export function StoreProvider({ children }) {
     assignManualCategory,
     importRows,
     reapplyRules,
+    saveAdjustment,
+    deleteAdjustment,
   }
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>

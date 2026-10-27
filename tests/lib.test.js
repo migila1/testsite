@@ -85,4 +85,12 @@ describe('stats', () => {
     expect(filterForReports(txs)).toHaveLength(1)
     expect(sumByCategory(txs)[0].totalCents).toBe(300)
   })
+
+  it('filtert op geselecteerde maanden', () => {
+    const txs = [
+      { booking_date: '2026-01-15', amount_cents: -100, excluded: false, is_internal_transfer: false, category_id: 'c1' },
+      { booking_date: '2026-02-10', amount_cents: -400, excluded: false, is_internal_transfer: false, category_id: 'c1' },
+    ]
+    expect(sumByCategory(txs, { months: ['2026-01'] })[0].totalCents).toBe(100)
+  })
 })

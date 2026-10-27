@@ -116,5 +116,24 @@ export function createSupabaseDb() {
         if (insErr) throw insErr
       }
     },
+    async listAdjustments() {
+      const { data, error } = await client.from('category_adjustments').select('*').order('month', { ascending: false })
+      if (error) throw error
+      return data ?? []
+    },
+    async saveAdjustment(adj) {
+      const userId = await requireUserId(client)
+      const { data, error } = await client
+        .from('category_adjustments')
+        .upsert(withUserId(adj, userId))
+        .select()
+        .single()
+      if (error) throw error
+      return data
+    },
+    async deleteAdjustment(id) {
+      const { error } = await client.from('category_adjustments').delete().eq('id', id)
+      if (error) throw error
+    },
   }
 }

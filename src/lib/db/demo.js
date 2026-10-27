@@ -88,9 +88,11 @@ function ensureState(seed) {
       categories: defaultCategories(),
       rules: [],
       transactions: [],
+      adjustments: [],
     }
     save(state)
   }
+  if (!state.adjustments) state.adjustments = []
   return state
 }
 
@@ -191,6 +193,26 @@ export function createDemoDb() {
     },
     async replaceAllTransactions(transactions) {
       state.transactions = transactions
+      persist()
+    },
+    async listAdjustments() {
+      return [...state.adjustments].sort((a, b) => (b.month ?? '').localeCompare(a.month ?? ''))
+    },
+    async saveAdjustment(adj) {
+      const idx = state.adjustments.findIndex((a) => a.id === adj.id)
+      let saved
+      if (idx >= 0) {
+        state.adjustments[idx] = adj
+        saved = state.adjustments[idx]
+      } else {
+        saved = { ...adj, id: adj.id ?? uid() }
+        state.adjustments.push(saved)
+      }
+      persist()
+      return saved
+    },
+    async deleteAdjustment(id) {
+      state.adjustments = state.adjustments.filter((a) => a.id !== id)
       persist()
     },
   }
