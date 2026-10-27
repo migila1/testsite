@@ -69,8 +69,9 @@ export function StoreProvider({ children }) {
   const categoryById = useMemo(() => new Map(categories.map((c) => [c.id, c])), [categories])
 
   const saveCategory = async (cat) => {
-    await db.saveCategory(cat)
+    const saved = await db.saveCategory(cat)
     await refresh()
+    return saved
   }
 
   const deleteCategory = async (id) => {

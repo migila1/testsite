@@ -123,10 +123,16 @@ export function createDemoDb() {
     },
     async saveCategory(cat) {
       const idx = state.categories.findIndex((c) => c.id === cat.id)
-      if (idx >= 0) state.categories[idx] = cat
-      else state.categories.push({ ...cat, id: cat.id ?? uid() })
+      let saved
+      if (idx >= 0) {
+        state.categories[idx] = cat
+        saved = state.categories[idx]
+      } else {
+        saved = { ...cat, id: cat.id ?? uid() }
+        state.categories.push(saved)
+      }
       persist()
-      return cat
+      return saved
     },
     async deleteCategory(id) {
       state.categories = state.categories.filter((c) => c.id !== id)

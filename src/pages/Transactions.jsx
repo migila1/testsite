@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import FilterBar from '../components/FilterBar.jsx'
 import { TxRow } from '../components/TransactionParts.jsx'
 import Button from '../components/ui/Button.jsx'
@@ -7,11 +7,23 @@ import Sheet from '../components/ui/Sheet.jsx'
 import { useStore } from '../store.jsx'
 
 export default function Transactions() {
-  const { transactions, categories, categoryById, updateTransaction, loading } = useStore()
+  const { transactions, categories, categoryById, updateTransaction, saveCategory, loading } = useStore()
   const [search, setSearch] = useState('')
   const [categoryId, setCategoryId] = useState('')
   const [month, setMonth] = useState('')
   const [selected, setSelected] = useState(null)
+  const [showNewCategory, setShowNewCategory] = useState(false)
+  const [newCatName, setNewCatName] = useState('')
+  const [newCatColor, setNewCatColor] = useState('#0f766e')
+  const [newCatBusy, setNewCatBusy] = useState(false)
+
+  useEffect(() => {
+    if (!selected) {
+      setShowNewCategory(false)
+      setNewCatName('')
+      setNewCatColor('#0f766e')
+    }
+  }, [selected])
 
   const filtered = useMemo(() => {
     return transactions.filter((t) => {
@@ -29,6 +41,26 @@ export default function Transactions() {
       category_source: catId ? 'manual' : null,
     })
     setSelected(null)
+  }
+
+  const createCategoryAndAssign = async (e) => {
+    e.preventDefault()
+    if (!selected || !newCatName.trim()) return
+    setNewCatBusy(true)
+    try {
+      const saved = await saveCategory({
+        name: newCatName.trim(),
+        color: newCatColor,
+        sort_order: categories.length + 1,
+      })
+      await updateTransaction(selected.id, {
+        category_id: saved.id,
+        category_source: 'manual',
+      })
+      setSelected(null)
+    } finally {
+      setNewCatBusy(false)
+    }
   }
 
   return (
@@ -78,6 +110,44 @@ export default function Transactions() {
                 ))}
               </select>
             </label>
+
+            {!showNewCategory ? (
+              <Button type="button" variant="ghost" className="w-full justify-center" onClick={() => setShowNewCategory(true)}>
+                + Nieuwe categorie
+              </Button>
+            ) : (
+              <form onSubmit={createCategoryAndAssign} className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                <p className="text-sm font-medium text-slate-800">Nieuwe categorie</p>
+                <label className="block text-sm">
+                  Naam
+                  <input
+                    className="mt-1 min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3"
+                    value={newCatName}
+                    onChange={(e) => setNewCatName(e.target.value)}
+                    placeholder="bijv. Abonnementen"
+                    autoFocus
+                  />
+                </label>
+                <label className="block text-sm">
+                  Kleur
+                  <input
+                    type="color"
+                    className="mt-1 min-h-11 w-full rounded-xl border border-slate-200 bg-white p-1"
+                    value={newCatColor}
+                    onChange={(e) => setNewCatColor(e.target.value)}
+                  />
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  <Button type="submit" disabled={newCatBusy || !newCatName.trim()}>
+                    {newCatBusy ? 'Bezig…' : 'Aanmaken en toewijzen'}
+                  </Button>
+                  <Button type="button" variant="secondary" onClick={() => setShowNewCategory(false)}>
+                    Annuleren
+                  </Button>
+                </div>
+              </form>
+            )}
+
             <div className="flex flex-wrap gap-2">
               <Button variant="secondary" onClick={() => updateTransaction(selected.id, { excluded: !selected.excluded })}>
                 {selected.excluded ? 'Meenemen in rapport' : 'Uitsluiten'}
