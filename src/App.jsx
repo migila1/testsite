@@ -1,5 +1,7 @@
+import { AuthProvider, useAuth } from './auth.jsx'
 import Layout from './components/Layout.jsx'
 import { useRouter } from './lib/router.js'
+import Login from './pages/Login.jsx'
 import Accounts from './pages/Accounts.jsx'
 import Categories from './pages/Categories.jsx'
 import Dashboard from './pages/Dashboard.jsx'
@@ -23,8 +25,18 @@ const PAGES = {
 
 function RouterView() {
   const { route } = useRouter()
+  const { authRequired, user, authReady } = useAuth()
   const { ready, error } = useStore()
   const Page = PAGES[route] ?? Dashboard
+
+  if (!authReady || (authRequired && !user)) {
+    if (authReady && authRequired && !user) return <Login />
+    return (
+      <div className="flex min-h-dvh items-center justify-center text-slate-600">
+        Laden…
+      </div>
+    )
+  }
 
   if (!ready) {
     return (
@@ -48,8 +60,10 @@ function RouterView() {
 
 export default function App() {
   return (
-    <StoreProvider>
-      <RouterView />
-    </StoreProvider>
+    <AuthProvider>
+      <StoreProvider>
+        <RouterView />
+      </StoreProvider>
+    </AuthProvider>
   )
 }

@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import { useAuth } from './auth.jsx'
 import { createDb } from './lib/db/index.js'
 import { applyRules } from './lib/rules.js'
 import { computeFingerprint, fingerprintBaseKey } from './lib/fingerprint.js'
@@ -6,7 +7,9 @@ import { computeFingerprint, fingerprintBaseKey } from './lib/fingerprint.js'
 const StoreContext = createContext(null)
 
 export function StoreProvider({ children }) {
+  const { authRequired, user, authReady } = useAuth()
   const db = useMemo(() => createDb(), [])
+  const canLoad = authReady && (!authRequired || user)
   const [ready, setReady] = useState(false)
   const [error, setError] = useState(null)
   const [accounts, setAccounts] = useState([])
@@ -37,6 +40,15 @@ export function StoreProvider({ children }) {
   }, [db])
 
   useEffect(() => {
+    if (!canLoad) {
+      setReady(false)
+      setAccounts([])
+      setCategories([])
+      setRules([])
+      setTransactions([])
+      setLoading(false)
+      return undefined
+    }
     let cancelled = false
     ;(async () => {
       try {
@@ -52,7 +64,7 @@ export function StoreProvider({ children }) {
     return () => {
       cancelled = true
     }
-  }, [db, refresh])
+  }, [db, refresh, canLoad])
 
   const categoryById = useMemo(() => new Map(categories.map((c) => [c.id, c])), [categories])
 

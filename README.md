@@ -10,7 +10,7 @@ npm ci
 npm run dev
 ```
 
-Zonder Supabase (of met `VITE_DEMO=true`) gebruikt de app localStorage. `VITE_DEMO_SEED=true` vult voorbeelddata.
+Zonder Supabase (of met `VITE_DEMO=true`) gebruikt de app localStorage — **geen login**. Met Supabase URL + anon key is **e-mail/wachtwoord login** verplicht (Auth in Supabase Dashboard inschakelen). `VITE_DEMO_SEED=true` vult voorbeelddata in demo-modus.
 
 ## Tests & build
 

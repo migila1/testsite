@@ -1,26 +1,30 @@
-import { createClient } from '@supabase/supabase-js'
+import { getSupabaseClient } from '../supabaseClient.js'
+
+async function requireUserId(client) {
+  const {
+    data: { user },
+    error,
+  } = await client.auth.getUser()
+  if (error) throw error
+  if (!user) throw new Error('Niet ingelogd')
+  return user.id
+}
+
+function withUserId(row, userId) {
+  return { ...row, user_id: userId }
+}
 
 export function createSupabaseDb() {
-  const url = import.meta.env.VITE_SUPABASE_URL
-  const key = import.meta.env.VITE_SUPABASE_ANON_KEY
-  if (!url || !key) {
-    throw new Error('Supabase URL en anon key zijn vereist')
-  }
-
-  const client = createClient(url, key)
+  const client = getSupabaseClient()
 
   return {
     mode: 'supabase',
     client,
     async init() {
-      const { data: { session } } = await client.auth.getSession()
-      if (!session) {
-        const email = import.meta.env.VITE_DEV_EMAIL
-        const password = import.meta.env.VITE_DEV_PASSWORD
-        if (email && password) {
-          await client.auth.signInWithPassword({ email, password })
-        }
-      }
+      const {
+        data: { session },
+      } = await client.auth.getSession()
+      if (!session) return
     },
     async listAccounts() {
       const { data, error } = await client.from('accounts').select('*').order('name')
@@ -28,7 +32,12 @@ export function createSupabaseDb() {
       return data ?? []
     },
     async saveAccount(account) {
-      const { data, error } = await client.from('accounts').upsert(account).select().single()
+      const userId = await requireUserId(client)
+      const { data, error } = await client
+        .from('accounts')
+        .upsert(withUserId(account, userId))
+        .select()
+        .single()
       if (error) throw error
       return data
     },
@@ -42,7 +51,12 @@ export function createSupabaseDb() {
       return data ?? []
     },
     async saveCategory(cat) {
-      const { data, error } = await client.from('categories').upsert(cat).select().single()
+      const userId = await requireUserId(client)
+      const { data, error } = await client
+        .from('categories')
+        .upsert(withUserId(cat, userId))
+        .select()
+        .single()
       if (error) throw error
       return data
     },
@@ -56,7 +70,12 @@ export function createSupabaseDb() {
       return data ?? []
     },
     async saveRule(rule) {
-      const { data, error } = await client.from('rules').upsert(rule).select().single()
+      const userId = await requireUserId(client)
+      const { data, error } = await client
+        .from('rules')
+        .upsert(withUserId(rule, userId))
+        .select()
+        .single()
       if (error) throw error
       return data
     },
@@ -73,12 +92,14 @@ export function createSupabaseDb() {
       return data ?? []
     },
     async upsertTransactions(rows) {
+      const userId = await requireUserId(client)
+      const payload = rows.map((row) => withUserId(row, userId))
       const { data, error } = await client
         .from('transactions')
-        .upsert(rows, { onConflict: 'user_id,account_id,fingerprint', ignoreDuplicates: true })
+        .upsert(payload, { onConflict: 'user_id,account_id,fingerprint', ignoreDuplicates: true })
         .select()
       if (error) throw error
-      return { inserted: data?.length ?? 0, skipped: rows.length - (data?.length ?? 0) }
+      return { inserted: data?.length ?? 0, skipped: payload.length - (data?.length ?? 0) }
     },
     async updateTransaction(id, patch) {
       const { data, error } = await client.from('transactions').update(patch).eq('id', id).select().single()
@@ -86,10 +107,12 @@ export function createSupabaseDb() {
       return data
     },
     async replaceAllTransactions(transactions) {
-      const { error } = await client.from('transactions').delete().neq('id', '00000000-0000-0000-0000-000000000000')
+      const userId = await requireUserId(client)
+      const { error } = await client.from('transactions').delete().eq('user_id', userId)
       if (error) throw error
       if (transactions.length) {
-        const { error: insErr } = await client.from('transactions').insert(transactions)
+        const payload = transactions.map((row) => withUserId(row, userId))
+        const { error: insErr } = await client.from('transactions').insert(payload)
         if (insErr) throw insErr
       }
     },

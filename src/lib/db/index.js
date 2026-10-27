@@ -1,12 +1,10 @@
+import { isDemoMode } from '../mode.js'
 import { createDemoDb } from './demo.js'
 import { createSupabaseDb } from './supabase.js'
 
-export function createDb() {
-  const demo =
-    import.meta.env.VITE_DEMO === 'true' ||
-    !import.meta.env.VITE_SUPABASE_URL ||
-    !import.meta.env.VITE_SUPABASE_ANON_KEY
+export { isDemoMode } from '../mode.js'
 
-  if (demo) return createDemoDb()
+export function createDb() {
+  if (isDemoMode()) return createDemoDb()
   return createSupabaseDb()
 }
