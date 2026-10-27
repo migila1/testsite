@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { computeFingerprint, fingerprintBaseKey } from '../src/lib/fingerprint.js'
 import { formatCents, parseEuroToCents } from '../src/lib/money.js'
+import { findCategorySuggestions, findExactCategory } from '../src/lib/categorySuggest.js'
 import { applyInternalTransferDetection, normalizeIban } from '../src/lib/internalTransfer.js'
 import { sortTransactions } from '../src/lib/sortTransactions.js'
 import { buildLearnedRuleUpsert, mergePatternWords, suggestPatternFromTransaction } from '../src/lib/learnRule.js'
@@ -31,6 +32,19 @@ describe('fingerprint', () => {
     const f1 = await computeFingerprint(tx, 1)
     expect(f0).not.toBe(f1)
     expect(fingerprintBaseKey(tx)).toContain('a1')
+  })
+})
+
+describe('categorySuggest', () => {
+  const cats = [{ id: '1', name: 'Vakantie', color: '#000' }]
+
+  it('vindt prefix vaka → vakantie', () => {
+    const s = findCategorySuggestions('vaka', cats)
+    expect(s[0]?.category.name).toBe('Vakantie')
+  })
+
+  it('herkent exacte dubbel', () => {
+    expect(findExactCategory(' vakantie ', cats)?.id).toBe('1')
   })
 })
 

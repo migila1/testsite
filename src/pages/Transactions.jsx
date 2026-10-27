@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
+import CategoryNameInput from '../components/CategoryNameInput.jsx'
 import FilterBar from '../components/FilterBar.jsx'
 import { TxRow } from '../components/TransactionParts.jsx'
 import Button from '../components/ui/Button.jsx'
 import Card from '../components/ui/Card.jsx'
 import Sheet from '../components/ui/Sheet.jsx'
+import { findExactCategory } from '../lib/categorySuggest.js'
 import { suggestPatternFromTransaction } from '../lib/learnRule.js'
 import { sortTransactions } from '../lib/sortTransactions.js'
 import { transactionMatchText } from '../lib/transactionText.js'
@@ -59,11 +61,28 @@ export default function Transactions() {
     setSelected(null)
   }
 
+  const useExistingCategory = async (cat) => {
+    if (!selected) return
+    setNewCatBusy(true)
+    try {
+      await assignManualCategory(selected.id, cat.id, { learnPattern, learnEnabled })
+      setSelected(null)
+    } finally {
+      setNewCatBusy(false)
+    }
+  }
+
   const createCategoryAndAssign = async (e) => {
     e.preventDefault()
     if (!selected || !newCatName.trim()) return
     setNewCatBusy(true)
     try {
+      const existing = findExactCategory(newCatName, categories)
+      if (existing) {
+        await assignManualCategory(selected.id, existing.id, { learnPattern, learnEnabled })
+        setSelected(null)
+        return
+      }
       const saved = await saveCategory({
         name: newCatName.trim(),
         color: newCatColor,
@@ -163,12 +182,13 @@ export default function Transactions() {
                 <p className="text-sm font-medium text-slate-800">Nieuwe categorie</p>
                 <label className="block text-sm">
                   Naam
-                  <input
-                    className="mt-1 min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3"
+                  <CategoryNameInput
                     value={newCatName}
-                    onChange={(e) => setNewCatName(e.target.value)}
-                    placeholder="bijv. Abonnementen"
-                    autoFocus
+                    onChange={setNewCatName}
+                    categories={categories}
+                    onUseExisting={useExistingCategory}
+                    placeholder="bijv. vakantie"
+                    inputClassName="mt-1 min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3"
                   />
                 </label>
                 <label className="block text-sm">

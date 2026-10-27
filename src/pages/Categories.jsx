@@ -1,6 +1,8 @@
 import { useState } from 'react'
+import CategoryNameInput from '../components/CategoryNameInput.jsx'
 import Button from '../components/ui/Button.jsx'
 import Card from '../components/ui/Card.jsx'
+import { findExactCategory } from '../lib/categorySuggest.js'
 import { useStore } from '../store.jsx'
 
 export default function Categories() {
@@ -11,6 +13,7 @@ export default function Categories() {
   const add = async (e) => {
     e.preventDefault()
     if (!name.trim()) return
+    if (findExactCategory(name, categories)) return
     await saveCategory({ name: name.trim(), color, sort_order: categories.length + 1 })
     setName('')
   }
@@ -21,13 +24,15 @@ export default function Categories() {
         <form onSubmit={add} className="flex flex-col gap-3 sm:flex-row sm:items-end">
           <label className="flex-1 text-sm">
             Naam
-            <input className="mt-1 min-h-11 w-full rounded-xl border border-slate-200 px-3" value={name} onChange={(e) => setName(e.target.value)} />
+            <CategoryNameInput value={name} onChange={setName} categories={categories} />
           </label>
           <label className="text-sm">
             Kleur
             <input type="color" className="mt-1 min-h-11 w-full rounded-xl border border-slate-200 p-1" value={color} onChange={(e) => setColor(e.target.value)} />
           </label>
-          <Button type="submit">Toevoegen</Button>
+          <Button type="submit" disabled={Boolean(findExactCategory(name, categories))}>
+            Toevoegen
+          </Button>
         </form>
       </Card>
       <Card title="Categorieën">
