@@ -148,8 +148,8 @@ export default function Transactions() {
                 </label>
               )}
               <p className="text-xs text-slate-600">
-                Toekomstige transacties waarin alle woorden voorkomen krijgen automatisch deze categorie. Bestaande
-                regels voor dezelfde categorie worden uitgebreid, niet per woord gesplitst.
+                Toekomstige transacties waarin alle woorden voorkomen (in omschrijving, tegenrekening of mededelingen)
+                krijgen automatisch deze categorie. De suggestie komt vooral uit mededelingen.
               </p>
             </div>
 

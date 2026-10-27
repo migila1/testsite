@@ -3,7 +3,7 @@ import { computeFingerprint, fingerprintBaseKey } from '../src/lib/fingerprint.j
 import { formatCents, parseEuroToCents } from '../src/lib/money.js'
 import { applyInternalTransferDetection, normalizeIban } from '../src/lib/internalTransfer.js'
 import { sortTransactions } from '../src/lib/sortTransactions.js'
-import { buildLearnedRuleUpsert, mergePatternWords } from '../src/lib/learnRule.js'
+import { buildLearnedRuleUpsert, mergePatternWords, suggestPatternFromTransaction } from '../src/lib/learnRule.js'
 import { applyRules } from '../src/lib/rules.js'
 import { filterForReports, sumByCategory, sumByCategoryForMode } from '../src/lib/stats.js'
 
@@ -72,6 +72,15 @@ describe('internalTransfer', () => {
 })
 
 describe('learnRule', () => {
+  it('suggereert vooral termen uit mededelingen', () => {
+    const pattern = suggestPatternFromTransaction({
+      description: 'SEPA INCASSO',
+      counterparty_name: 'Incassant BV',
+      memo: 'Netflix premium abonnement',
+    })
+    expect(pattern.toLowerCase()).toContain('netflix')
+  })
+
   it('voegt woorden samen in één regel', () => {
     expect(mergePatternWords('albert heijn', 'heijn rotterdam')).toBe('albert heijn rotterdam')
   })
@@ -93,6 +102,23 @@ describe('learnRule', () => {
 })
 
 describe('rules', () => {
+  it('matcht op mededelingen', () => {
+    const txs = [
+      {
+        id: '1',
+        description: 'SEPA INCASSO',
+        counterparty_name: 'Incassant BV',
+        memo: 'Netflix maandelijks',
+        category_id: null,
+        category_source: null,
+      },
+    ]
+    const rules = [
+      { id: 'r1', pattern: 'netflix', match_type: 'contains', category_id: 'c1', active: true, priority: 1 },
+    ]
+    expect(applyRules(txs, rules)[0].category_id).toBe('c1')
+  })
+
   it('matcht all_words als alle termen voorkomen', () => {
     const txs = [{ id: '1', description: 'SPOTIFY PREMIUM NL', category_id: null, category_source: null }]
     const rules = [

@@ -1,3 +1,5 @@
+import { transactionMatchText } from './transactionText.js'
+
 /**
  * Past regels toe op transacties. Handmatige categorieën blijven intact.
  * @param {Array} transactions
@@ -9,7 +11,7 @@ export function applyRules(transactions, rules) {
     if (tx.category_source === 'manual' && tx.category_id) {
       return tx
     }
-    const hay = `${tx.description ?? ''} ${tx.counterparty_name ?? ''}`.toLowerCase()
+    const hay = transactionMatchText(tx)
     for (const rule of sorted) {
       if (!rule.active) continue
       const needle = (rule.pattern ?? '').toLowerCase()

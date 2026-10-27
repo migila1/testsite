@@ -27,18 +27,28 @@ export function mergePatternWords(a, b) {
   return [...merged].join(' ')
 }
 
-export function suggestPatternFromTransaction(tx) {
-  const hay = `${tx.description ?? ''} ${tx.counterparty_name ?? ''}`.toLowerCase()
+function tokenizeField(text) {
+  const hay = String(text ?? '').toLowerCase()
   const tokens = hay
     .replace(/[^a-z0-9\s]/g, ' ')
     .split(/\s+/)
     .filter((w) => w.length >= 3 && !/^\d+$/.test(w) && !STOPWORDS.has(w))
-
   const unique = []
   for (const t of tokens) {
     if (unique[unique.length - 1] !== t) unique.push(t)
   }
-  return unique.slice(0, 3).join(' ')
+  return unique
+}
+
+/** Mededelingen eerst — tegenrekening/omschrijving zijn vaak hetzelfde voor verschillende doelen. */
+export function suggestPatternFromTransaction(tx) {
+  const memoTokens = tokenizeField(tx.memo)
+  const otherTokens = tokenizeField(`${tx.description ?? ''} ${tx.counterparty_name ?? ''}`)
+  const combined = []
+  for (const t of [...memoTokens, ...otherTokens]) {
+    if (!combined.includes(t)) combined.push(t)
+  }
+  return combined.slice(0, 3).join(' ')
 }
 
 function rulesShareWords(a, b) {
