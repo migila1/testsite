@@ -84,6 +84,7 @@ export default function Transactions() {
               <TxRow
                 tx={tx}
                 categoryName={tx.category_id ? categoryById.get(tx.category_id)?.name : null}
+                categoryColor={tx.category_id ? categoryById.get(tx.category_id)?.color : null}
                 onSelect={setSelected}
               />
             </li>

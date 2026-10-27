@@ -38,6 +38,7 @@ export default function Duplicates() {
                     <TxRow
                       tx={tx}
                       categoryName={tx.category_id ? categoryById.get(tx.category_id)?.name : null}
+                      categoryColor={tx.category_id ? categoryById.get(tx.category_id)?.color : null}
                     />
                   </li>
                 ))}

@@ -9,12 +9,17 @@ export function TxAmount({ cents, className = '' }) {
   )
 }
 
-export function TxRow({ tx, categoryName, onSelect }) {
+export function TxRow({ tx, categoryName, categoryColor, onSelect }) {
+  const hasCategoryColor = Boolean(categoryColor)
+
   return (
     <button
       type="button"
       onClick={() => onSelect?.(tx)}
-      className="flex w-full min-h-11 items-start gap-3 rounded-xl px-2 py-2 text-left hover:bg-slate-50 active:bg-slate-100"
+      className={`flex w-full min-h-11 items-start gap-3 rounded-xl py-2 pr-2 text-left hover:bg-slate-50 active:bg-slate-100 ${
+        hasCategoryColor ? 'border-l-4 pl-3' : 'pl-2'
+      }`}
+      style={hasCategoryColor ? { borderLeftColor: categoryColor } : undefined}
     >
       <div className="min-w-0 flex-1">
         <p className="truncate font-medium text-slate-900">{tx.description}</p>
