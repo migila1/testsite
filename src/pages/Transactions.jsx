@@ -6,6 +6,7 @@ import Card from '../components/ui/Card.jsx'
 import Sheet from '../components/ui/Sheet.jsx'
 import { suggestPatternFromTransaction } from '../lib/learnRule.js'
 import { sortTransactions } from '../lib/sortTransactions.js'
+import { transactionMatchText } from '../lib/transactionText.js'
 import { useStore } from '../store.jsx'
 
 export default function Transactions() {
@@ -38,7 +39,7 @@ export default function Transactions() {
 
   const filtered = useMemo(() => {
     const rows = transactions.filter((t) => {
-      if (search && !`${t.description}`.toLowerCase().includes(search.toLowerCase())) return false
+      if (search && !transactionMatchText(t).includes(search.toLowerCase())) return false
       if (categoryId === '__geen__' && t.category_id) return false
       if (categoryId && categoryId !== '__geen__' && t.category_id !== categoryId) return false
       if (month && !(t.booking_date ?? '').startsWith(month)) return false

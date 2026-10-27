@@ -17,7 +17,7 @@ export default function FilterBar({
         <span className="text-slate-600">Zoeken</span>
         <input
           className="min-h-11 rounded-xl border border-slate-200 px-3"
-          placeholder="Omschrijving…"
+          placeholder="Naam, omschrijving of mededelingen…"
           value={search}
           onChange={(e) => onSearch(e.target.value)}
         />
