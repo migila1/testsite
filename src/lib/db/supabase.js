@@ -7,9 +7,6 @@ export function createSupabaseDb() {
     throw new Error('Supabase URL en anon key zijn vereist')
   }
 
-	console.log('Supabase URL:', import.meta.env.VITE_SUPABASE_URL)
-	console.log('Supabase key aanwezig:', !!import.meta.env.VITE_SUPABASE_ANON_KEY)
-
   const client = createClient(url, key)
 
   return {
